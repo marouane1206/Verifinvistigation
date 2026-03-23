@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+/* Custom theme for Verifinvestigation.org */
+@theme {
+  /* Bleu nuit - Deep blue for primary brand */
+  --color-nuit-50: #e6eaf0;
+  --color-nuit-100: #c2ccde;
+  --color-nuit-200: #9baecc;
+  --color-nuit-300: #748fba;
+  --color-nuit-400: #5771a8;
+  --color-nuit-500: #3a5496;
+  --color-nuit-600: #2f4378;
+  --color-nuit-700: #24335b;
+  --color-nuit-800: #1a243d;
+  --color-nuit-900: #0f1520;
+  --color-nuit-950: #080b10;
+
+  /* Gris ardoise - Slate gray for neutral */
+  --color-ardoise-50: #f8fafc;
+  --color-ardoise-100: #f1f5f9;
+  --color-ardoise-200: #e2e8f0;
+  --color-ardoise-300: #cbd5e1;
+  --color-ardoise-400: #94a3b8;
+  --color-ardoise-500: #64748b;
+  --color-ardoise-600: #475569;
+  --color-ardoise-700: #334155;
+  --color-ardoise-800: #1e293b;
+  --color-ardoise-900: #0f172a;
+  --color-ardoise-950: #020617;
+
+  /* Rouge/Orange for alerts */
+  --color-alerte-50: #fff7ed;
+  --color-alerte-100: #ffedd5;
+  --color-alerte-200: #fed7aa;
+  --color-alerte-300: #fdba74;
+  --color-alerte-400: #fb923c;
+  --color-alerte-500: #f97316;
+  --color-alerte-600: #ea580c;
+  --color-alerte-700: #c2410c;
+  --color-alerte-800: #9a3412;
+  --color-alerte-900: #7c2d12;
+  --color-alerte-950: #431407;
+
+  /* Jaune/Warning */
+  --color-jaune-50: #fefce8;
+  --color-jaune-100: #fef9c3;
+  --color-jaune-200: #fef08a;
+  --color-jaune-300: #fde047;
+  --color-jaune-400: #facc15;
+  --color-jaune-500: #eab308;
+  --color-jaune-600: #ca8a04;
+  --color-jaune-700: #a16207;
+  --color-jaune-800: #854d0e;
+  --color-jaune-900: #713f12;
+  --color-jaune-950: #422006;
+
+  /* Bleu/Info */
+  --color-bleu-50: #eff6ff;
+  --color-bleu-100: #dbeafe;
+  --color-bleu-200: #bfdbfe;
+  --color-bleu-300: #93c5fd;
+  --color-bleu-400: #60a5fa;
+  --color-bleu-500: #3b82f6;
+  --color-bleu-600: #2563eb;
+  --color-bleu-700: #1d4ed8;
+  --color-bleu-800: #1e40af;
+  --color-bleu-900: #1e3a8a;
+  --color-bleu-950: #172554;
+
+  /* Vert/Success */
+  --color-vert-50: #f0fdf4;
+  --color-vert-100: #dcfce7;
+  --color-vert-200: #bbf7d0;
+  --color-vert-300: #86efac;
+  --color-vert-400: #4ade80;
+  --color-vert-500: #22c55e;
+  --color-vert-600: #16a34a;
+  --color-vert-700: #15803d;
+  --color-vert-800: #166534;
+  --color-vert-900: #14532d;
+  --color-vert-950: #052e16;
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
