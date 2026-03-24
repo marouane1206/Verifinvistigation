@@ -17,10 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
   const emailConfirmationPending = ref(false)
 
   const isAuthenticated = computed(() => !!user.value)
-  const isJournalist = computed(() => {
-    console.log('[AUTH] isJournalist computed, user.role:', user.value?.role)
-    return user.value?.role === 'journalist'
-  })
+  const isJournalist = computed(() => user.value?.role === 'journalist')
   const isAdmin = computed(() => user.value?.role === 'admin')
   const isStandardUser = computed(() => user.value?.role === 'user')
   
@@ -123,11 +120,13 @@ export const useAuthStore = defineStore('auth', () => {
         }
         
         if (newData) {
+          // Ensure role has a valid value - fallback to 'user' if null/undefined
+          const createdRole = newData.role || 'user'
           user.value = {
             id: newData.id,
             email: newData.email || email,
             username: newData.username,
-            role: newData.role,
+            role: createdRole,
             created_at: newData.created_at,
           }
         }
@@ -137,13 +136,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     if (data) {
-      console.log('[AUTH] fetchUserProfile - profile data:', data)
+      // Ensure role has a valid value - fallback to 'user' if null/undefined
+      const finalRole = data.role || 'user'
+      
       user.value = {
         id: data.id,
         // Get email from profile or fallback to auth
         email: data.email || authData?.user?.email || '',
         username: data.username,
-        role: data.role,
+        role: finalRole,
         created_at: data.created_at,
       }
     }
@@ -191,7 +192,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
         
         await fetchUserProfile(data.user.id)
-        console.log('[AUTH] Login - user after fetch:', user.value)
         return true
       }
       return false
@@ -280,7 +280,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         const userRole = profileData?.role || (isJournalist ? 'journalist' : 'user')
-        console.log('[AUTH] Register - profile role:', profileData?.role, ', isJournalist:', isJournalist, ', final role:', userRole)
         
         // Check if email confirmation is required
         

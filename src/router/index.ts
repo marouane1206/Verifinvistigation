@@ -293,7 +293,8 @@ router.beforeEach(async (to, _from) => {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
     // Check if user has journalist role (not admin, not standard user)
-    if (!authStore.user || authStore.user.role !== 'journalist') {
+    // Use isJournalist computed property which handles undefined role safely
+    if (!authStore.isJournalist) {
       // Non-journalist users trying to access journalist route should go to their dashboard
       return { name: 'user-dashboard' }
     }
