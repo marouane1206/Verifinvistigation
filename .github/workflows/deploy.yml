@@ -39,6 +39,12 @@ jobs:
           echo "VITE_ADMIN_EMAIL=${{ secrets.VITE_ADMIN_EMAIL }}" >> .env
           echo "VITE_ADMIN_PASSWORD=${{ secrets.VITE_ADMIN_PASSWORD }}" >> .env
           echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
+      - name: Debug Environment
+        run: |
+          echo "Debug: Checking if env file was created"
+          cat .env
+          echo "Debug: Contents of .env (first 50 chars of each value)"
+          head -c 50 .env
 
       - name: Build
         run: npm run build
