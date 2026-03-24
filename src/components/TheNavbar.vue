@@ -347,65 +347,23 @@ onUnmounted(() => {
               >
                 <div class="w-8 h-8 rounded-full bg-nuit-500 flex items-center justify-center">
                   <span class="text-sm font-medium text-white">
-                  v-for="item in adminCategories[2].items"
-                  :key="item.name"
-                  :to="item.to"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === item.to }"
-                  @click="closeMenus"
-                >
-                  {{ item.name }}
-                </router-link>
-              </div>
-            </transition>
-          </div>
-        </div>
-
-
-        <!-- Desktop Auth Section -->
-        <div class="hidden md:flex items-center space-x-3">
-          <!-- Not authenticated - Show Login/Register -->
-          <template v-if="!isAuthenticated">
-            <router-link
-              to="/login"
-              class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-            >
-              Connexion
-            </router-link>
-            <router-link
-              to="/register"
-              class="bg-white text-nuit-700 hover:bg-nuit-50 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-            >
-              Inscription
-            </router-link>
-          </template>
-
-          <!-- Authenticated - Show User Menu -->
-          <template v-else>
-            <!-- User Dropdown -->
-            <div class="relative dropdown-container">
-              <button
-                @click.stop="toggleProfileDropdown"
-                @keydown.enter.stop="toggleProfileDropdown"
-                @keydown.escape="isProfileDropdownOpen = false"
-                class="flex items-center space-x-2 text-nuit-100 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded-md transition-colors duration-200"
-                :class="{ 'text-white': isProfileDropdownOpen }"
-                :aria-expanded="isProfileDropdownOpen"
-                aria-haspopup="true"
-                aria-label="Menu utilisateur"
-              >
-                <div class="w-8 h-8 rounded-full bg-nuit-500 flex items-center justify-center">
-                  <span class="text-sm font-medium text-white">
                     {{ user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U' }}
                   </span>
                 </div>
                 <span class="text-sm font-medium hidden lg:block">{{ user?.username || user?.email?.split('@')[0] }}</span>
-                <svg class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isProfileDropdownOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <svg 
+                  class="h-4 w-4 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isProfileDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor" 
+                  aria-hidden="true"
+                >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              <!-- Dropdown Menu -->
+              <!-- Profile Dropdown Menu -->
               <transition
                 enter-active-class="transition ease-out duration-100"
                 enter-from-class="transform opacity-0 scale-95"
@@ -417,11 +375,13 @@ onUnmounted(() => {
                 <div
                   v-if="isProfileDropdownOpen"
                   class="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50"
+                  role="menu"
+                  aria-label="Menu de profil"
                 >
                   <!-- User Info -->
                   <div class="px-4 py-3 border-b border-gray-100">
                     <p class="text-sm font-medium text-gray-900 truncate">{{ user?.username }}</p>
-                    <p class="text-xs text-gray-500 capitalize">{{ user?.role === 'admin' ? 'Administrateur' : user?.role === 'journalist' ? 'Journaliste' : 'Utilisateur' }}</p>
+                    <p class="text-xs text-gray-500 capitalize">Journaliste</p>
                   </div>
 
                   <!-- Menu Items -->
@@ -430,7 +390,8 @@ onUnmounted(() => {
                     :key="item.name"
                     :to="item.to"
                     class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                    @click="closeMenus"
+                    role="menuitem"
+                    @click="closeAllMenus"
                   >
                     {{ item.name }}
                   </router-link>
@@ -441,6 +402,7 @@ onUnmounted(() => {
                   <button
                     @click="handleLogout"
                     class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors duration-150"
+                    role="menuitem"
                   >
                     Déconnexion
                   </button>
@@ -453,15 +415,15 @@ onUnmounted(() => {
         <!-- Mobile menu button -->
         <div class="flex items-center md:hidden">
           <button
-            @click="toggleMenu"
-            @keydown.enter="toggleMenu"
-            @keydown.space.prevent="toggleMenu"
+            @click="toggleMobileMenu"
+            @keydown.enter="toggleMobileMenu"
+            @keydown.space.prevent="toggleMobileMenu"
             class="text-nuit-100 hover:text-white p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
-            :aria-expanded="isMenuOpen"
+            :aria-expanded="isMobileMenuOpen"
             aria-controls="mobile-menu"
             aria-label="Menu de navigation"
           >
-            <svg v-if="!isMenuOpen" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <svg v-if="!isMobileMenuOpen" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
             <svg v-else class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -481,42 +443,117 @@ onUnmounted(() => {
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-2"
     >
-      <div v-if="isMenuOpen" id="mobile-menu" class="md:hidden bg-nuit-700" role="menu" aria-label="Menu mobile">
+      <div 
+        v-if="isMobileMenuOpen" 
+        id="mobile-menu" 
+        class="md:hidden bg-nuit-700" 
+        role="menu" 
+        aria-label="Menu mobile"
+      >
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-          <router-link
-            v-for="item in filteredNav"
-            :key="item.name"
-            :to="item.to"
-            class="text-nuit-100 hover:text-white hover:bg-nuit-600 block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
-            :class="{ 'bg-nuit-600 text-white': $route.path === item.to }"
-            :aria-current="$route.path === item.to ? 'page' : undefined"
-            role="menuitem"
-            @click="closeMenus"
-          >
-            {{ item.name }}
-          </router-link>
+          <template v-if="isJournalist">
+            <!-- Mobile Direct Links -->
+            <router-link
+              v-for="item in journalistNavItems.filter(i => !i.dropdown)"
+              :key="item.name"
+              :to="item.to!"
+              class="text-nuit-100 hover:text-white hover:bg-nuit-600 block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+              :class="{ 'bg-nuit-600 text-white': isActiveRoute(item.to!) }"
+              :aria-current="isActiveRoute(item.to!) ? 'page' : undefined"
+              role="menuitem"
+              @click="closeAllMenus"
+            >
+              {{ item.name }}
+            </router-link>
 
-          <!-- Mobile Admin Categories -->
-          <div v-if="isAdmin" class="border-t border-nuit-600 pt-3 mt-3">
-            <div class="px-3 py-2 text-xs font-semibold text-nuit-300 uppercase tracking-wider">
-              Administration
-            </div>
-            <template v-for="category in adminCategories" :key="category.name">
-              <div class="px-3 py-1 text-xs font-medium text-nuit-400">
-                {{ category.name }}
-              </div>
-              <router-link
-                v-for="item in category.items"
-                :key="item.name"
-                :to="item.to"
-                class="block pl-6 pr-3 py-2 text-nuit-100 hover:text-white hover:bg-nuit-600 rounded-md text-base font-medium transition-colors duration-200"
-                :class="{ 'bg-nuit-600 text-white': $route.path === item.to }"
-                @click="closeMenus"
+            <!-- Mobile Signalements Dropdown -->
+            <div class="border-t border-nuit-600 pt-3 mt-3">
+              <button
+                @click.stop="toggleSignalementsDropdown"
+                class="flex items-center justify-between w-full text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+                :class="{ 'bg-nuit-600 text-white': isSignalementsDropdownOpen || isDropdownItemActive(journalistNavItems.find(i => i.name === 'Signalements')!.dropdown!) }"
+                :aria-expanded="isSignalementsDropdownOpen"
+                aria-haspopup="true"
               >
-                {{ item.name }}
-              </router-link>
-            </template>
-          </div>
+                <span>Signalements</span>
+                <svg 
+                  class="h-4 w-4 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isSignalementsDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 max-h-0"
+                enter-to-class="opacity-100 max-h-40"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 max-h-40"
+                leave-to-class="opacity-0 max-h-0"
+              >
+                <div v-if="isSignalementsDropdownOpen" class="mt-1 overflow-hidden">
+                  <router-link
+                    v-for="item in journalistNavItems.find(i => i.name === 'Signalements')?.dropdown?.items"
+                    :key="item.name"
+                    :to="item.to"
+                    class="block pl-6 pr-3 py-2 text-nuit-200 hover:text-white hover:bg-nuit-600 rounded-md text-base font-medium transition-colors duration-200"
+                    :class="{ 'bg-nuit-600 text-white': isActiveRoute(item.to) }"
+                    @click="closeAllMenus"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                </div>
+              </transition>
+            </div>
+
+            <!-- Mobile Verification Dropdown -->
+            <div class="border-t border-nuit-600 pt-3 mt-3">
+              <button
+                @click.stop="toggleVerificationDropdown"
+                class="flex items-center justify-between w-full text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+                :class="{ 'bg-nuit-600 text-white': isVerificationDropdownOpen || isDropdownItemActive(journalistNavItems.find(i => i.name === 'Verification')!.dropdown!) }"
+                :aria-expanded="isVerificationDropdownOpen"
+                aria-haspopup="true"
+              >
+                <span>Verification</span>
+                <svg 
+                  class="h-4 w-4 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isVerificationDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 max-h-0"
+                enter-to-class="opacity-100 max-h-40"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 max-h-40"
+                leave-to-class="opacity-0 max-h-0"
+              >
+                <div v-if="isVerificationDropdownOpen" class="mt-1 overflow-hidden">
+                  <router-link
+                    v-for="item in journalistNavItems.find(i => i.name === 'Verification')?.dropdown?.items"
+                    :key="item.name"
+                    :to="item.to"
+                    class="block pl-6 pr-3 py-2 text-nuit-200 hover:text-white hover:bg-nuit-600 rounded-md text-base font-medium transition-colors duration-200"
+                    :class="{ 'bg-nuit-600 text-white': isActiveRoute(item.to) }"
+                    @click="closeAllMenus"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                </div>
+              </transition>
+            </div>
+          </template>
         </div>
 
         <!-- Mobile Auth Section -->
@@ -525,16 +562,9 @@ onUnmounted(() => {
             <router-link
               to="/login"
               class="block w-full text-center text-nuit-100 hover:text-white px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
-              @click="closeMenus"
+              @click="closeAllMenus"
             >
               Connexion
-            </router-link>
-            <router-link
-              to="/register"
-              class="block w-full text-center bg-white text-nuit-700 hover:bg-nuit-50 px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
-              @click="closeMenus"
-            >
-              Inscription
             </router-link>
           </template>
 
@@ -548,7 +578,7 @@ onUnmounted(() => {
               </div>
               <div class="flex-1">
                 <p class="text-nuit-100 text-sm font-medium">{{ user?.username || user?.email?.split('@')[0] }}</p>
-                <p class="text-nuit-200 text-xs capitalize">{{ user?.role === 'admin' ? 'Administrateur' : user?.role === 'journalist' ? 'Journaliste' : 'Utilisateur' }}</p>
+                <p class="text-nuit-200 text-xs">Journaliste</p>
               </div>
             </div>
 
@@ -558,7 +588,7 @@ onUnmounted(() => {
                 :key="item.name"
                 :to="item.to"
                 class="block text-nuit-100 hover:text-white px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
-                @click="closeMenus"
+                @click="closeAllMenus"
               >
                 {{ item.name }}
               </router-link>
