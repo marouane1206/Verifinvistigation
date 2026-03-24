@@ -85,6 +85,18 @@ const routes = [
     meta: { role: 'journalist' as RouteRole },
   },
   {
+    path: '/journaliste/verify/pending',
+    name: 'journalist-verify-pending',
+    component: JournalistPendingView,
+    meta: { role: 'journalist' as RouteRole },
+  },
+  {
+    path: '/journaliste/verify/verify',
+    name: 'journalist-verify-verify',
+    component: JournalistVerifyView,
+    meta: { role: 'journalist' as RouteRole },
+  },
+  {
     path: '/investigation/:id',
     name: 'investigation-details',
     component: InvestigationDetailsView,

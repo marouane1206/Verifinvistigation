@@ -1,216 +1,188 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
+// Types
+interface DropdownItem {
+  name: string
+  to: string
+}
+
+interface DropdownMenu {
+  name: string
+  items: DropdownItem[]
+}
+
+// Router and Auth
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
-const isMenuOpen = ref(false)
+// Refs for mobile menu and dropdowns
+const isMobileMenuOpen = ref(false)
 const isProfileDropdownOpen = ref(false)
+const isSignalementsDropdownOpen = ref(false)
+const isVerificationDropdownOpen = ref(false)
 
-// Separate dropdown states for each admin category
-const isDashboardDropdownOpen = ref(false)
-const isUsersDropdownOpen = ref(false)
-const isJournalistDropdownOpen = ref(false)
-
-// Use auth store directly instead of props
+// Computed properties
 const user = computed(() => authStore.user)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isJournalist = computed(() => authStore.isJournalist)
-const isAdmin = computed(() => authStore.isAdmin)
 
-// Navigation items based on authentication and role
-type UserRole = 'user' | 'journalist' | 'admin'
-
-interface NavItem {
-  name: string
-  to: string
-  requiresAuth: boolean
-  roles: UserRole[]
-}
-
-const navigation = computed<NavItem[]>(() => {
-  const items: NavItem[] = []
-
-  // Regular user items - visible to authenticated users only (NOT admins)
-  if (isAuthenticated.value && !isAdmin.value) {
-    items.push(
-      { name: 'Tableau de bord', to: '/users/dashboard', requiresAuth: true, roles: ['user', 'journalist'] },
-      { name: 'Signaler', to: '/signaler', requiresAuth: true, roles: ['user', 'journalist'] },
-      { name: 'Verifier', to: '/verifier', requiresAuth: true, roles: ['user', 'journalist'] }
-    )
-  }
-
-  // Journalist items - visible to journalists only (not admins)
-  if (isJournalist.value && !isAdmin.value) {
-    items.push(
-      { name: 'Espace Journaliste', to: '/journalistes/dashboard', requiresAuth: true, roles: ['journalist'] },
-      { name: 'Signalements en attente', to: '/journaliste/pending', requiresAuth: true, roles: ['journalist'] },
-      { name: 'Vérifier les signalements', to: '/journaliste/verify', requiresAuth: true, roles: ['journalist'] }
-    )
-  }
-
-  return items
-})
-
-// Admin navigation categories with dropdown
-const adminCategories = computed(() => {
-  if (!isAdmin.value) return []
+// Journalist navigation configuration
+const journalistNavItems = computed<{ name: string; to?: string; dropdown?: DropdownMenu }[]>(() => {
+  if (!isJournalist.value) return []
   
   return [
     {
       name: 'Tableau de bord',
-      icon: 'dashboard',
-      items: [
-        { name: 'Tableau de bord admin', to: '/admin', requiresAuth: true, roles: ['admin'] }
-      ]
+      to: '/journalistes/dashboard'
     },
     {
-      name: 'Espace Journaliste',
-      icon: 'journalist',
-      items: [
-        { name: 'Journalistes', to: '/admin/journalists', requiresAuth: true, roles: ['admin'] },
-        { name: 'Signalement', to: '/journaliste/reports', requiresAuth: true, roles: ['admin'] },
-        { name: 'Verification', to: '/journaliste/investigations', requiresAuth: true, roles: ['admin'] },
-        { name: 'Medias', to: '/journaliste/media', requiresAuth: true, roles: ['admin'] }
-      ]
+      name: 'Signalements',
+      dropdown: {
+        name: 'Signalements',
+        items: [
+          { name: 'En attente', to: '/journaliste/pending' },
+          { name: 'Verifier', to: '/journaliste/verify' }
+        ]
+      }
     },
     {
-      name: 'Espace Utilisateur',
-      icon: 'users',
-      items: [
-        { name: 'Utilisateurs', to: '/admin/users', requiresAuth: true, roles: ['admin'] },
-        { name: 'Signalements', to: '/admin/users/reports', requiresAuth: true, roles: ['admin'] },
-        { name: 'Vérification', to: '/admin/users/investigations', requiresAuth: true, roles: ['admin'] },
-        { name: 'Médias Utilisateurs', to: '/admin/users/media', requiresAuth: true, roles: ['admin'] }
-      ]
+      name: 'Verification',
+      dropdown: {
+        name: 'Verification',
+        items: [
+          { name: 'En attente', to: '/journaliste/verify/pending' },
+          { name: 'Verifier', to: '/journaliste/verify/verify' }
+        ]
+      }
     }
   ]
 })
-const filteredNav = computed(() => {
-  return navigation.value.filter(item => {
-    // If item has role restrictions, check if user has one of those roles
-    if (item.roles.length > 0) {
-      const userRole = user.value?.role as UserRole | undefined
-      return userRole ? item.roles.includes(userRole) : false
-    }
-    return true
-  })
-})
 
-// User dropdown menu items based on role
+// User menu items
 const userMenuItems = computed(() => {
-  const items = [
-    { name: 'Paramètres', to: '/settings', icon: 'settings' },
+  const items: { name: string; to: string; icon: string }[] = [
+    { name: 'Paramètres', to: '/settings', icon: 'settings' }
   ]
-
-  // Add journalist link for journalists
-  if (isJournalist.value && !isAdmin.value) {
-    items.push({ name: 'Espace Journaliste', to: '/journalistes/dashboard', icon: 'journalist' })
-  }
-
   return items
 })
 
-function toggleMenu() {
-  isMenuOpen.value = !isMenuOpen.value
-  if (isMenuOpen.value) {
+// Check if route is active
+function isActiveRoute(path: string): boolean {
+  return route.path === path
+}
+
+// Check if any dropdown item is active
+function isDropdownItemActive(dropdown: DropdownMenu): boolean {
+  return dropdown.items.some(item => route.path === item.to)
+}
+
+// Toggle functions
+function toggleMobileMenu() {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+  if (isMobileMenuOpen.value) {
     isProfileDropdownOpen.value = false
-    closeAllAdminDropdowns()
+    closeAllDropdowns()
   }
 }
 
 function toggleProfileDropdown() {
   isProfileDropdownOpen.value = !isProfileDropdownOpen.value
   if (isProfileDropdownOpen.value) {
-    closeAllAdminDropdowns()
+    closeAllDropdowns()
   }
 }
 
-// Toggle functions for each admin category dropdown
-function toggleDashboardDropdown() {
-  isDashboardDropdownOpen.value = !isDashboardDropdownOpen.value
-  if (isDashboardDropdownOpen.value) {
+function toggleSignalementsDropdown() {
+  isSignalementsDropdownOpen.value = !isSignalementsDropdownOpen.value
+  if (isSignalementsDropdownOpen.value) {
     isProfileDropdownOpen.value = false
-    closeOtherAdminDropdowns('dashboard')
+    isVerificationDropdownOpen.value = false
   }
 }
 
-function toggleUsersDropdown() {
-  isUsersDropdownOpen.value = !isUsersDropdownOpen.value
-  if (isUsersDropdownOpen.value) {
+function toggleVerificationDropdown() {
+  isVerificationDropdownOpen.value = !isVerificationDropdownOpen.value
+  if (isVerificationDropdownOpen.value) {
     isProfileDropdownOpen.value = false
-    closeOtherAdminDropdowns('users')
+    isSignalementsDropdownOpen.value = false
   }
 }
 
-function toggleJournalistDropdown() {
-  isJournalistDropdownOpen.value = !isJournalistDropdownOpen.value
-  if (isJournalistDropdownOpen.value) {
-    isProfileDropdownOpen.value = false
-    closeOtherAdminDropdowns('journalist')
-  }
+function closeAllDropdowns() {
+  isSignalementsDropdownOpen.value = false
+  isVerificationDropdownOpen.value = false
 }
 
-
-function closeAllAdminDropdowns() {
-  isDashboardDropdownOpen.value = false
-  isUsersDropdownOpen.value = false
-  isJournalistDropdownOpen.value = false
+function closeMobileMenu() {
+  isMobileMenuOpen.value = false
 }
 
-function closeOtherAdminDropdowns(exclude: string) {
-  if (exclude !== 'dashboard') isDashboardDropdownOpen.value = false
-  if (exclude !== 'users') isUsersDropdownOpen.value = false
-  if (exclude !== 'journalist') isJournalistDropdownOpen.value = false
+function closeAllMenus() {
+  isMobileMenuOpen.value = false
+  isProfileDropdownOpen.value = false
+  closeAllDropdowns()
 }
 
+// Handle logout
 async function handleLogout() {
   isProfileDropdownOpen.value = false
-  isMenuOpen.value = false
+  closeMobileMenu()
   await authStore.logout()
   router.push('/')
 }
 
-function closeMenus() {
-  isMenuOpen.value = false
-  isProfileDropdownOpen.value = false
-  closeAllAdminDropdowns()
-}
-
-// Close dropdowns when clicking outside
+// Handle click outside
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as HTMLElement
   if (!target.closest('.dropdown-container')) {
     isProfileDropdownOpen.value = false
-    closeAllAdminDropdowns()
+    closeAllDropdowns()
   }
 }
 
-// Watch for auth state changes to close menus
-watch(isAuthenticated, (newVal, oldVal) => {
-  if (oldVal !== newVal) {
-    closeMenus()
+// Handle keyboard events
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeAllMenus()
   }
+}
+
+// Watch for route changes to close mobile menu
+watch(() => route.path, () => {
+  closeMobileMenu()
 })
 
+// Lifecycle hooks
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
 <template>
-  <nav class="bg-nuit-700 shadow-lg sticky top-0 z-50">
+  <nav 
+    class="bg-nuit-700 shadow-lg sticky top-0 z-50" 
+    role="navigation" 
+    aria-label="Navigation principale"
+  >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16">
         <!-- Logo -->
         <div class="shrink-0 flex items-center">
-          <router-link to="/" class="flex items-center space-x-2" @click="closeMenus">
+          <router-link 
+            to="/" 
+            class="flex items-center space-x-2" 
+            @click="closeAllMenus"
+          >
             <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
@@ -218,124 +190,163 @@ onUnmounted(() => {
           </router-link>
         </div>
 
-        <!-- Desktop Navigation -->
-        <div class="hidden md:flex items-center space-x-2">
-          <!-- Regular navigation items -->
-          <router-link
-            v-for="item in filteredNav"
-            :key="item.name"
-            :to="item.to"
-            class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-            :class="{ 'bg-nuit-600 text-white': $route.path === item.to }"
-            @click="closeMenus"
-          >
-            {{ item.name }}
-          </router-link>
-
-          <!-- Admin Dashboard Dropdown -->
-          <div v-if="isAdmin" class="relative dropdown-container">
-            <button
-              @click.stop="toggleDashboardDropdown"
-              class="flex items-center text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-              :class="{ 'bg-nuit-600 text-white': isDashboardDropdownOpen }"
+        <!-- Desktop Navigation - Journalist Only -->
+        <div class="hidden md:flex items-center space-x-1">
+          <template v-if="isJournalist">
+            <!-- Tableau de bord - Direct link -->
+            <router-link
+              v-for="item in journalistNavItems.filter(i => !i.dropdown)"
+              :key="item.name"
+              :to="item.to!"
+              class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+              :class="{ 'bg-nuit-600 text-white': isActiveRoute(item.to!) }"
+              :aria-current="isActiveRoute(item.to!) ? 'page' : undefined"
+              @click="closeAllMenus"
             >
-              <svg class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              Tableau de bord
-              <svg class="h-4 w-4 ml-1 transition-transform duration-200" :class="{ 'rotate-180': isDashboardDropdownOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+              {{ item.name }}
+            </router-link>
 
-            <transition
-              enter-active-class="transition ease-out duration-100"
-              enter-from-class="transform opacity-0 scale-95"
-              enter-to-class="transform opacity-100 scale-100"
-              leave-active-class="transition ease-in duration-75"
-              leave-from-class="transform opacity-100 scale-100"
-              leave-to-class="transform opacity-0 scale-95"
-            >
-              <div v-if="isDashboardDropdownOpen" class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <router-link
-                  v-for="item in adminCategories[0].items"
-                  :key="item.name"
-                  :to="item.to"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === item.to }"
-                  @click="closeMenus"
+            <!-- Signalements Dropdown -->
+            <div class="relative dropdown-container">
+              <button
+                @click.stop="toggleSignalementsDropdown"
+                @keydown.enter.stop="toggleSignalementsDropdown"
+                @keydown.escape="isSignalementsDropdownOpen = false"
+                class="flex items-center text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                :class="{ 
+                  'bg-nuit-600 text-white': isSignalementsDropdownOpen || isDropdownItemActive(journalistNavItems.find(i => i.name === 'Signalements')!.dropdown!) 
+                }"
+                :aria-expanded="isSignalementsDropdownOpen"
+                aria-haspopup="true"
+                aria-label="Menu Signalements"
+              >
+                Signalements
+                <svg 
+                  class="h-4 w-4 ml-1 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isSignalementsDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                  aria-hidden="true"
                 >
-                  {{ item.name }}
-                </router-link>
-              </div>
-            </transition>
-          </div>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-          <!-- Admin Journaliste Dropdown -->
-          <div v-if="isAdmin" class="relative dropdown-container">
-            <button
-              @click.stop="toggleUsersDropdown"
-              class="flex items-center text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-              :class="{ 'bg-nuit-600 text-white': isUsersDropdownOpen }"
-            >
-              <svg class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-              </svg>
-              Espace Journaliste
-              <svg class="h-4 w-4 ml-1 transition-transform duration-200" :class="{ 'rotate-180': isUsersDropdownOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            <transition
-              enter-active-class="transition ease-out duration-100"
-              enter-from-class="transform opacity-0 scale-95"
-              enter-to-class="transform opacity-100 scale-100"
-              leave-active-class="transition ease-in duration-75"
-              leave-from-class="transform opacity-100 scale-100"
-              leave-to-class="transform opacity-0 scale-95"
-            >
-              <div v-if="isUsersDropdownOpen" class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <router-link
-                  v-for="item in adminCategories[1].items"
-                  :key="item.name"
-                  :to="item.to"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                  :class="{ 'bg-blue-50 text-blue-600': $route.path === item.to }"
-                  @click="closeMenus"
+              <transition
+                enter-active-class="transition ease-out duration-100"
+                enter-from-class="transform opacity-0 scale-95"
+                enter-to-class="transform opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-75"
+                leave-from-class="transform opacity-100 scale-100"
+                leave-to-class="transform opacity-0 scale-95"
+              >
+                <div 
+                  v-if="isSignalementsDropdownOpen" 
+                  class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                  role="menu"
+                  aria-label="Sous-menu Signalements"
                 >
-                  {{ item.name }}
-                </router-link>
-              </div>
-            </transition>
-          </div>
+                  <router-link
+                    v-for="item in journalistNavItems.find(i => i.name === 'Signalements')?.dropdown?.items"
+                    :key="item.name"
+                    :to="item.to"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    :class="{ 'bg-blue-50 text-blue-600': isActiveRoute(item.to) }"
+                    role="menuitem"
+                    @click="closeAllMenus"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                </div>
+              </transition>
+            </div>
 
-          <!-- Admin Espace Utilisateur Dropdown -->
-          <div v-if="isAdmin" class="relative dropdown-container">
-            <button
-              @click.stop="toggleJournalistDropdown"
-              class="flex items-center text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-              :class="{ 'bg-nuit-600 text-white': isJournalistDropdownOpen }"
-            >
-              <svg class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              Espace Utilisateur
-              <svg class="h-4 w-4 ml-1 transition-transform duration-200" :class="{ 'rotate-180': isJournalistDropdownOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+            <!-- Verification Dropdown -->
+            <div class="relative dropdown-container">
+              <button
+                @click.stop="toggleVerificationDropdown"
+                @keydown.enter.stop="toggleVerificationDropdown"
+                @keydown.escape="isVerificationDropdownOpen = false"
+                class="flex items-center text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                :class="{ 
+                  'bg-nuit-600 text-white': isVerificationDropdownOpen || isDropdownItemActive(journalistNavItems.find(i => i.name === 'Verification')!.dropdown!) 
+                }"
+                :aria-expanded="isVerificationDropdownOpen"
+                aria-haspopup="true"
+                aria-label="Menu Verification"
+              >
+                Verification
+                <svg 
+                  class="h-4 w-4 ml-1 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isVerificationDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-            <transition
-              enter-active-class="transition ease-out duration-100"
-              enter-from-class="transform opacity-0 scale-95"
-              enter-to-class="transform opacity-100 scale-100"
-              leave-active-class="transition ease-in duration-75"
-              leave-from-class="transform opacity-100 scale-100"
-              leave-to-class="transform opacity-0 scale-95"
+              <transition
+                enter-active-class="transition ease-out duration-100"
+                enter-from-class="transform opacity-0 scale-95"
+                enter-to-class="transform opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-75"
+                leave-from-class="transform opacity-100 scale-100"
+                leave-to-class="transform opacity-0 scale-95"
+              >
+                <div 
+                  v-if="isVerificationDropdownOpen" 
+                  class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                  role="menu"
+                  aria-label="Sous-menu Verification"
+                >
+                  <router-link
+                    v-for="item in journalistNavItems.find(i => i.name === 'Verification')?.dropdown?.items"
+                    :key="item.name"
+                    :to="item.to"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    :class="{ 'bg-blue-50 text-blue-600': isActiveRoute(item.to) }"
+                    role="menuitem"
+                    @click="closeAllMenus"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                </div>
+              </transition>
+            </div>
+          </template>
+        </div>
+
+        <!-- Desktop Auth Section -->
+        <div class="hidden md:flex items-center space-x-3">
+          <!-- Not authenticated - Show Login -->
+          <template v-if="!isAuthenticated">
+            <router-link
+              to="/login"
+              class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
             >
-              <div v-if="isJournalistDropdownOpen" class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <router-link
+              Connexion
+            </router-link>
+          </template>
+
+          <!-- Authenticated - Show User Profile Dropdown -->
+          <template v-else>
+            <div class="relative dropdown-container">
+              <button
+                @click.stop="toggleProfileDropdown"
+                @keydown.enter.stop="toggleProfileDropdown"
+                @keydown.escape="isProfileDropdownOpen = false"
+                class="flex items-center space-x-2 text-nuit-100 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded-md transition-colors duration-200"
+                :class="{ 'text-white': isProfileDropdownOpen }"
+                :aria-expanded="isProfileDropdownOpen"
+                aria-haspopup="true"
+                aria-label="Menu utilisateur"
+              >
+                <div class="w-8 h-8 rounded-full bg-nuit-500 flex items-center justify-center">
+                  <span class="text-sm font-medium text-white">
                   v-for="item in adminCategories[2].items"
                   :key="item.name"
                   :to="item.to"
@@ -375,8 +386,13 @@ onUnmounted(() => {
             <div class="relative dropdown-container">
               <button
                 @click.stop="toggleProfileDropdown"
-                class="flex items-center space-x-2 text-nuit-100 hover:text-white focus:outline-none transition-colors duration-200"
+                @keydown.enter.stop="toggleProfileDropdown"
+                @keydown.escape="isProfileDropdownOpen = false"
+                class="flex items-center space-x-2 text-nuit-100 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded-md transition-colors duration-200"
                 :class="{ 'text-white': isProfileDropdownOpen }"
+                :aria-expanded="isProfileDropdownOpen"
+                aria-haspopup="true"
+                aria-label="Menu utilisateur"
               >
                 <div class="w-8 h-8 rounded-full bg-nuit-500 flex items-center justify-center">
                   <span class="text-sm font-medium text-white">
@@ -384,7 +400,7 @@ onUnmounted(() => {
                   </span>
                 </div>
                 <span class="text-sm font-medium hidden lg:block">{{ user?.username || user?.email?.split('@')[0] }}</span>
-                <svg class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isProfileDropdownOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isProfileDropdownOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -438,12 +454,17 @@ onUnmounted(() => {
         <div class="flex items-center md:hidden">
           <button
             @click="toggleMenu"
+            @keydown.enter="toggleMenu"
+            @keydown.space.prevent="toggleMenu"
             class="text-nuit-100 hover:text-white p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
+            :aria-expanded="isMenuOpen"
+            aria-controls="mobile-menu"
+            aria-label="Menu de navigation"
           >
-            <svg v-if="!isMenuOpen" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg v-if="!isMenuOpen" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            <svg v-else class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg v-else class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -460,7 +481,7 @@ onUnmounted(() => {
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-2"
     >
-      <div v-if="isMenuOpen" class="md:hidden bg-nuit-700">
+      <div v-if="isMenuOpen" id="mobile-menu" class="md:hidden bg-nuit-700" role="menu" aria-label="Menu mobile">
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           <router-link
             v-for="item in filteredNav"
@@ -468,6 +489,8 @@ onUnmounted(() => {
             :to="item.to"
             class="text-nuit-100 hover:text-white hover:bg-nuit-600 block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
             :class="{ 'bg-nuit-600 text-white': $route.path === item.to }"
+            :aria-current="$route.path === item.to ? 'page' : undefined"
+            role="menuitem"
             @click="closeMenus"
           >
             {{ item.name }}
