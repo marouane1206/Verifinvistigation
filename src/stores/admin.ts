@@ -387,7 +387,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   // Media Library Actions
-  async function fetchMediaFiles() {
+  async function fetchMediaFiles(filterRole?: 'user' | 'journalist') {
     loading.value = true
     error.value = null
     try {
@@ -427,8 +427,18 @@ export const useAdminStore = defineStore('admin', () => {
         } as MediaFile
       }))
 
-      // Filter to only show files uploaded by regular users (not admin or journalist)
-      const filteredMedia = mediaWithUrls.filter(m => m.uploader_role === 'user')
+      // Filter based on the filterRole parameter
+      let filteredMedia: MediaFile[]
+      if (filterRole === 'user') {
+        // Show only files uploaded by regular users (not admin or journalist)
+        filteredMedia = mediaWithUrls.filter(m => m.uploader_role === 'user')
+      } else if (filterRole === 'journalist') {
+        // Show only files uploaded by journalists
+        filteredMedia = mediaWithUrls.filter(m => m.uploader_role === 'journalist')
+      } else {
+        // No filter - show all files
+        filteredMedia = mediaWithUrls
+      }
 
       mediaFiles.value = filteredMedia
       return filteredMedia

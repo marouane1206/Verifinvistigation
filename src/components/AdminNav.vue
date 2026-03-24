@@ -91,6 +91,7 @@ const adminNavItems = computed<NavSection[]>(() => {
         items: [
           { name: 'Liste des utilisateurs', to: '/admin/users', icon: 'users' },
           { name: 'Créer un utilisateur', to: '/admin/users/create', icon: 'user-plus' },
+          { name: 'Médias', to: '/admin/users/media', icon: 'image' },
           { name: 'Rôles et permissions', to: '/admin/users/roles', icon: 'shield' },
           { name: 'Journal d\'activité', to: '/admin/users/activity', icon: 'activity' }
         ]
@@ -104,6 +105,7 @@ const adminNavItems = computed<NavSection[]>(() => {
         items: [
           { name: 'Liste des journalistes', to: '/admin/journalists', icon: 'user-check' },
           { name: 'Demandes d\'approbation', to: '/admin/journalists/approvals', icon: 'user-plus', badge: 0 },
+          { name: 'Médias', to: '/admin/journalists/media', icon: 'image' },
           { name: 'Gestion des articles', to: '/admin/journalists/articles', icon: 'file-text' },
           { name: 'Performance et stats', to: '/admin/journalists/performance', icon: 'bar-chart' }
         ]
@@ -116,10 +118,6 @@ const adminNavItems = computed<NavSection[]>(() => {
     {
       name: 'Vérification',
       to: '/admin/investigations'
-    },
-    {
-      name: 'Médias',
-      to: '/admin/media'
     }
   ]
 })
@@ -345,6 +343,9 @@ onUnmounted(() => {
                       <svg v-else-if="item.icon === 'shield'" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
+                      <svg v-else-if="item.icon === 'image'" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
                       <svg v-else-if="item.icon === 'activity'" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
@@ -415,6 +416,9 @@ onUnmounted(() => {
                       </svg>
                       <svg v-else-if="item.icon === 'file-text'" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <svg v-else-if="item.icon === 'image'" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       <svg v-else-if="item.icon === 'bar-chart'" class="h-4 w-4 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />

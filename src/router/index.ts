@@ -189,6 +189,12 @@ const routes = [
     meta: { role: 'admin' as RouteRole },
   },
   {
+    path: '/admin/journalists/media',
+    name: 'admin-journalists-media',
+    component: AdminMediaView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
     path: '/admin/journalists/approvals',
     name: 'admin-journalists-approvals',
     component: AdminUsersView,

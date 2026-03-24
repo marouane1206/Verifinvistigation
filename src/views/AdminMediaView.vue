@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAdminStore, type MediaFile } from '../stores/admin'
 import BaseButton from '../components/BaseButton.vue'
 
+const route = useRoute()
 const adminStore = useAdminStore()
 
 const searchQuery = ref('')
@@ -11,6 +13,29 @@ const showDeleteModal = ref(false)
 const fileToDelete = ref<MediaFile | null>(null)
 const selectedFile = ref<MediaFile | null>(null)
 const previewUrl = ref<string | null>(null)
+
+// Determine context based on route path
+const mediaContext = computed(() => {
+  const path = route.path
+  if (path.includes('/journalists/media')) {
+    return 'journalist'
+  }
+  return 'user'
+})
+
+// Page title based on context
+const pageTitle = computed(() => {
+  return mediaContext.value === 'journalist' 
+    ? 'Médiathèque Journalistes' 
+    : 'Médiathèque Utilisateurs'
+})
+
+// Description based on context
+const pageDescription = computed(() => {
+  return mediaContext.value === 'journalist'
+    ? 'Gérer les fichiers uploadés par les journalistes'
+    : 'Gérer les fichiers uploadés par les utilisateurs (non-admins et non-journalistes)'
+})
 
 const filteredFiles = computed(() => {
   if (!searchQuery.value) return adminStore.mediaFiles
@@ -86,7 +111,8 @@ const copyUrl = async (url: string) => {
 }
 
 onMounted(() => {
-  adminStore.fetchMediaFiles()
+  const filterRole = mediaContext.value === 'journalist' ? 'journalist' : 'user'
+  adminStore.fetchMediaFiles(filterRole)
 })
 </script>
 
