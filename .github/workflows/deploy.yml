@@ -37,6 +37,22 @@ jobs:
         with:
           path: './dist'
 
+  deploy_supabase:
+    needs: build_site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inject environment variables into build
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env.production
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env.production
+      - name: Rebuild with production env
+        run: |
+          npm run build
+      - name: Upload Artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
   deploy:
     needs: build_site
     runs-on: ubuntu-latest
