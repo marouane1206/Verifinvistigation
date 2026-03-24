@@ -1,0 +1,4 @@
+# SPA Redirect rules for GitHub Pages
+# All routes should redirect to index.html for Vue Router to handle
+
+/*    /index.html   200
