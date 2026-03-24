@@ -16,11 +16,29 @@ const formData = ref({
   confirmPassword: '',
 })
 
+const isJournalist = ref(false)
+
 const acceptTerms = ref(false)
 const errors = ref<Record<string, string>>({})
+const isSubmitting = ref(false)
+const registrationSuccess = ref(false)
+let lastSubmitTime = 0
 
 async function handleSubmit() {
+  // Prevent rapid repeated submissions (debounce)
+  const now = Date.now()
+  if (now - lastSubmitTime < 3000) {
+    console.log('[REGISTER] Debounce: preventing rapid submission')
+    errors.value.general = 'Veuillez patienter avant de soumettre à nouveau'
+    return
+  }
+  lastSubmitTime = now
+  
+  if (isSubmitting.value) return
+  isSubmitting.value = true
+  
   errors.value = {}
+  registrationSuccess.value = false
   
   // Validation
   if (!formData.value.email) {
@@ -55,15 +73,32 @@ async function handleSubmit() {
 
   const success = await authStore.register(
     formData.value.email,
+    formData.value.password,
     formData.value.username,
-    formData.value.password
+    isJournalist.value
   )
   
   if (success) {
-    router.push('/dashboard')
+    console.log('[Register] Registration successful, user:', authStore.user)
+    console.log('[Register] isJournalist computed:', authStore.isJournalist)
+    
+    if (authStore.emailConfirmationPending) {
+      // Email confirmation is required - show success message
+      registrationSuccess.value = true
+      errors.value.general = '' // Clear any previous errors
+    } else {
+      // No email confirmation required - redirect based on role
+      if (authStore.isJournalist) {
+        router.push('/journalistes/dashboard')
+      } else {
+        router.push('/users/dashboard')
+      }
+    }
   } else {
     errors.value.general = authStore.error || 'Erreur lors de l\'inscription'
   }
+  
+  isSubmitting.value = false
 }
 </script>
 
@@ -81,6 +116,15 @@ async function handleSubmit() {
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
       <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
         <form class="space-y-6" @submit.prevent="handleSubmit">
+          <!-- Success Message -->
+          <div
+            v-if="registrationSuccess"
+            class="bg-vert-50 border border-vert-200 text-vert-700 px-4 py-3 rounded relative"
+          >
+            <p class="font-medium">Inscription réussie !</p>
+            <p class="text-sm mt-1">Veuillez vérifier votre email pour confirmer votre compte avant de vous connecter.</p>
+          </div>
+
           <!-- General Error -->
           <div
             v-if="errors.general"
@@ -154,13 +198,36 @@ async function handleSubmit() {
             </div>
           </div>
 
+          <!-- Journalist Checkbox -->
+          <div class="bg-nuit-50 border border-nuit-200 rounded-md p-4">
+            <div class="flex items-start">
+              <div class="flex items-center h-5">
+                <input
+                  id="is_journalist"
+                  v-model="isJournalist"
+                  type="checkbox"
+                  class="h-4 w-4 text-nuit-600 border-gray-300 rounded focus:ring-nuit-500"
+                />
+              </div>
+              <div class="ml-3 text-sm">
+                <label for="is_journalist" class="font-medium text-gray-700">
+                  Je suis journaliste
+                </label>
+                <p class="text-gray-500 mt-1">
+                  Cochez cette case si vous êtes journaliste professionnel. Cela vous accordera un accès au tableau de bord journalist et la possibilité de mener des enquêtes.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Submit -->
           <div>
             <BaseButton
               type="submit"
               variant="primary"
               class="w-full"
-              :loading="authStore.loading"
+              :loading="isSubmitting || authStore.loading"
+              :disabled="isSubmitting"
             >
               Créer mon compte
             </BaseButton>

@@ -32,7 +32,7 @@ const services = [
     icon: '📰',
     title: 'Réseau Journalistes',
     description: 'Accédez à une plateforme collaborative pour les professionnels de l\'investigation.',
-    link: '/journaliste',
+    link: '/journalistes/dashboard',
     cta: 'Espace journaliste',
   },
 ]
@@ -49,7 +49,7 @@ function handleCtaClick(link: string) {
 <template>
   <div class="min-h-screen">
     <!-- Hero Section -->
-    <section class="relative bg-gradient-to-br from-nuit-900 via-nuit-800 to-nuit-700 text-white overflow-hidden">
+    <section class="relative bg-linear-to-br from-nuit-900 via-nuit-800 to-nuit-700 text-white overflow-hidden">
       <div class="absolute inset-0 bg-[url('/pattern.svg')] opacity-10"></div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
         <div class="text-center">
@@ -71,7 +71,7 @@ function handleCtaClick(link: string) {
             <BaseButton
               variant="outline"
               size="lg"
-              class="!border-white !text-white hover:!bg-white/10"
+              class="border-white! text-white hover:bg-white/10"
               @click="router.push('/login')"
             >
               Se connecter

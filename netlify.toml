@@ -1,0 +1,184 @@
+# Netlify Configuration for Verifinvestigation.org
+# ================================================
+#
+# This configuration file is used by Netlify to build and deploy your site.
+# For more information about Netlify configuration, visit:
+# https://docs.netlify.com/configure-builds/overview/
+
+# ==============================================================================
+# BUILD SETTINGS
+# ==============================================================================
+
+[build]
+  # The build command to run
+  command = "npm run build"
+  
+  # The publish directory (output folder from build)
+  publish = "dist"
+  
+  # The base directory relative to the repository root
+  # Leave empty if your project is at the root
+  base = ""
+
+# ==============================================================================
+# ENVIRONMENT CONFIGURATION
+# ==============================================================================
+#
+# IMPORTANT: Configure the following environment variables in your Netlify
+# site settings (Site settings > Environment variables):
+#
+# Required variables:
+#   - VITE_SUPABASE_URL: Your Supabase project URL
+#   - VITE_SUPABASE_ANON_KEY: Your Supabase anonymous key
+#
+# Optional variables:
+#   - VITE_APP_TITLE: Application title (default: "Verifinvestigation")
+#   - VITE_APP_DESCRIPTION: Application description
+#
+# To find these values:
+#   1. Go to https://supabase.com/dashboard
+#   2. Select your project
+#   3. Go to Project Settings > API
+#   4. Copy the "Project URL" and "anon public" key
+#
+# Example values in .env.example:
+#   VITE_SUPABASE_URL=https://your-project.supabase.co
+#   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# ==============================================================================
+# RUNTIME SETTINGS
+# ==============================================================================
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "18"
+  
+  # Set NPM as package manager
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# ==============================================================================
+# FRAMEWORK PRESET
+# ==============================================================================
+
+# Netlify automatically detects Vite projects
+# No explicit framework configuration needed for Vite
+
+# ==============================================================================
+# SPA REDIRECT RULES
+# ==============================================================================
+#
+# For Single Page Applications (SPA), all routes must be redirected to
+# index.html so that Vue Router can handle the routing client-side.
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true
+  # The following rule is optional but recommended for SPA routing
+  # It ensures that files in the public folder are served correctly
+  # before = "uri"
+
+# ==============================================================================
+# SECURITY HEADERS
+# ==============================================================================
+#
+# These headers help protect your site from common security vulnerabilities.
+# They are applied to all responses from your site.
+
+[[headers]]
+  for = "/*"
+  
+  [headers.values]
+    # Prevent the site from being embedded in iframes (clickjacking protection)
+    # Set to "DENY" to prevent all framing, or "SAMEORIGIN" to allow same-origin framing
+    X-Frame-Options = "DENY"
+    
+    # Prevent MIME type sniffing (helps prevent content-type confusion attacks)
+    X-Content-Type-Options = "nosniff"
+    
+    # Enable Cross-Site Scripting (XSS) protection in browsers
+    # "1; mode=block" enables XSS protection and blocks the page if XSS is detected
+    X-XSS-Protection = "1; mode=block"
+    
+    # Referrer Policy - controls how much referrer information is sent with requests
+    # "strict-origin-when-cross-origin" sends the full URL when same origin, 
+    # only origin when cross-origin
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # Content Security Policy - helps prevent XSS and data injection attacks
+    # Adjust the policy based on your application's needs
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';"
+    
+    # Permissions Policy - controls which browser features can be used
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    
+    # Cache control for static assets
+    Cache-Control = "public, max-age=3600"
+
+# ==============================================================================
+# EDGE FUNCTIONS (Optional)
+# ==============================================================================
+#
+# If you need server-side functionality, you can add Netlify Edge Functions
+# or Netlify Functions. Example:
+#
+# [[edge_functions]]
+#   path = "/api/*"
+#   function = "api-handler"
+#
+# [[functions]]
+#   directory = "netlify/functions"
+
+# ==============================================================================
+# CONTEXT-SPECIFIC SETTINGS
+# ==============================================================================
+#
+# You can override settings for specific deploy contexts:
+# - production: The main production site
+# - deploy-preview: Preview deployments for pull requests
+# - branch-deploy: Deployments for branch pushes
+
+[context.production]
+  # Production-specific environment variables
+  # [build.environment]
+  #   NODE_VERSION = "18"
+
+[context.deploy-preview]
+  # Deploy preview settings
+  # Build command can be modified for previews if needed
+  # command = "npm run build"
+
+[context.branch-deploy]
+  # Branch deploy settings
+  # Useful for testing feature branches
+
+# ==============================================================================
+# CACHE SETTINGS
+# ==============================================================================
+#
+# Configure caching for build artifacts to speed up subsequent builds
+
+[[plugins]]
+  package = "netlify-plugin-cypress"
+  # Optional: Add Cypress for e2e testing
+  # [plugins.inputs]
+  #   wait: true
+
+# ==============================================================================
+# NOTES
+# ==============================================================================
+#
+# 1. Make sure your package.json has a "build" script:
+#    "scripts": { "build": "vite build" }
+#
+# 2. The dist folder is automatically generated by Vite during build
+#
+# 3. For Supabase to work, ensure your Supabase URL and anon key are set
+#    in Netlify's environment variables
+#
+# 4. If you encounter build errors, check the Netlify deploy logs
+#
+# 5. For custom domain setup, configure in Netlify dashboard
+#
+# 6. To enable automatic deploys, connect your Git repository to Netlify

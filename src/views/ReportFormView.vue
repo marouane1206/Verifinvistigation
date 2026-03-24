@@ -1,22 +1,34 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useDocumentsStore } from '../stores/documents'
 import BaseInput from '../components/BaseInput.vue'
 import BaseTextarea from '../components/BaseTextarea.vue'
 import BaseButton from '../components/BaseButton.vue'
 import { supabase } from '../lib/supabase'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+const documentsStore = useDocumentsStore()
 
-const steps = [
-  { number: 1, title: 'Type' },
-  { number: 2, title: 'Informations' },
-  { number: 3, title: 'Anonymat' },
-  { number: 4, title: 'Documents' },
-  { number: 5, title: 'Vérification' },
-]
+// Determine form type from route path
+const formType = computed<'signalement' | 'verification'>(() => {
+  const path = route.path
+  if (path.startsWith('/verifier')) {
+    return 'verification'
+  }
+  return 'signalement'
+})
+
+// Dynamic steps based on form type
+const steps = computed(() => [
+  { number: 1, title: 'Informations' },
+  { number: 2, title: 'Anonymat' },
+  { number: 3, title: 'Documents' },
+  { number: 4, title: 'Vérification' },
+])
 
 const currentStep = ref(1)
 const loading = ref(false)
@@ -26,23 +38,43 @@ const formData = ref({
   type: '' as 'signalement' | 'verification' | '',
   title: '',
   description: '',
+  // Signalement-specific fields
+  suspectName: '',
+  suspectOrganization: '',
+  incidentDate: '',
+  incidentLocation: '',
+  // Verification-specific fields
+  sourceToVerify: '',
+  verificationContext: '',
+  // Common fields
   isAnonymous: false,
   documents: [] as File[],
 })
 
 const documentPreviews = ref<string[]>([])
 
+// Set form type on mount
+onMounted(() => {
+  formData.value.type = formType.value
+})
+
 const canProceed = computed(() => {
   switch (currentStep.value) {
     case 1:
-      return formData.value.type !== ''
+      // Validation based on form type
+      if (formType.value === 'signalement') {
+        return formData.value.title.trim().length >= 5 && 
+               formData.value.description.trim().length >= 20
+      } else {
+        return formData.value.title.trim().length >= 5 && 
+               formData.value.description.trim().length >= 20 &&
+               formData.value.sourceToVerify.trim().length > 0
+      }
     case 2:
-      return formData.value.title.trim().length >= 5 && formData.value.description.trim().length >= 20
-    case 3:
       return true
-    case 4:
+    case 3:
       return true // Documents are optional
-    case 5:
+    case 4:
       return true
     default:
       return false
@@ -50,7 +82,7 @@ const canProceed = computed(() => {
 })
 
 function nextStep() {
-  if (currentStep.value < 5 && canProceed.value) {
+  if (currentStep.value < 4 && canProceed.value) {
     currentStep.value++
   }
 }
@@ -84,11 +116,19 @@ async function submitReport() {
   error.value = ''
 
   try {
+    // Check if user's email is confirmed before allowing submission
+    const isConfirmed = await authStore.isEmailConfirmed()
+    if (!isConfirmed) {
+      error.value = 'Veuillez confirmer votre email avant de soumettre un rapport'
+      loading.value = false
+      return
+    }
+
     // Create report
     const { data: report, error: reportError } = await supabase
       .from('reports')
       .insert({
-        user_id: authStore.user?.id,
+        created_by: authStore.user?.id,
         title: formData.value.title,
         description: formData.value.description,
         type: formData.value.type,
@@ -101,20 +141,16 @@ async function submitReport() {
     if (reportError) throw reportError
 
     // Upload documents if any
-    if (formData.value.documents.length > 0 && report) {
+    if (formData.value.documents.length > 0 && report && authStore.user) {
       for (const file of formData.value.documents) {
-        const fileName = `${report.id}/${Date.now()}_${file.name}`
-        const { error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(fileName, file)
-
-        if (uploadError) {
-          console.error('Erreur upload:', uploadError)
+        const doc = await documentsStore.uploadDocument(file, report.id, authStore.user.id)
+        if (!doc) {
+          console.error('Failed to save document:', file.name)
         }
       }
     }
 
-    router.push('/dashboard')
+    router.push('/users/dashboard')
   } catch (err: any) {
     error.value = err.message || 'Erreur lors de la soumission'
   } finally {
@@ -122,10 +158,25 @@ async function submitReport() {
   }
 }
 
-const typeOptions = [
-  { value: 'signalement', label: 'Signalement', icon: '🚨', description: 'Signaler une activité suspecte, fraude ou infraction' },
-  { value: 'verification', label: 'Vérification', icon: '✓', description: 'Faire vérifier une information ou une source' },
-]
+// Type-specific labels and descriptions
+const typeLabels = computed(() => ({
+  signalement: {
+    title: 'Signalement',
+    icon: '🚨',
+    description: 'Signaler une activité suspecte, fraude ou infraction',
+    stepTitle: 'Informations du signalement',
+    titlePlaceholder: 'Titre concis de votre signalement',
+    descriptionPlaceholder: 'Décrivez en détail les faits, les circonstances et toute information utile...',
+  },
+  verification: {
+    title: 'Vérification',
+    icon: '✓',
+    description: 'Faire vérifier une information ou une source',
+    stepTitle: 'Informations à vérifier',
+    titlePlaceholder: 'Titre concis de votre demande de vérification',
+    descriptionPlaceholder: 'Décrivez l\'information à vérifier, le contexte et pourquoi vous avez des doutes...',
+  },
+}))
 </script>
 
 <template>
@@ -156,7 +207,7 @@ const typeOptions = [
         <div class="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
             class="h-full bg-nuit-600 transition-all duration-300"
-            :style="{ width: `${((currentStep - 1) / 4) * 100}%` }"
+            :style="{ width: `${((currentStep - 1) / 3) * 100}%` }"
           ></div>
         </div>
       </div>
@@ -169,61 +220,82 @@ const typeOptions = [
         {{ error }}
       </div>
 
-      <!-- Step 1: Type Selection -->
+      <!-- Step 1: Dynamic Form Based on Type -->
       <div v-if="currentStep === 1" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 class="text-xl font-bold text-gray-900 mb-6">Quel type de demande ?</h2>
-        
-        <div class="space-y-4">
-          <label
-            v-for="option in typeOptions"
-            :key="option.value"
-            :class="[
-              'flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all',
-              formData.type === option.value
-                ? 'border-nuit-600 bg-nuit-50'
-                : 'border-gray-200 hover:border-gray-300'
-            ]"
-          >
-            <input
-              type="radio"
-              :value="option.value"
-              v-model="formData.type"
-              class="hidden"
-            />
-            <span class="text-2xl mr-4">{{ option.icon }}</span>
-            <div>
-              <div class="font-semibold text-gray-900">{{ option.label }}</div>
-              <div class="text-sm text-gray-600">{{ option.description }}</div>
-            </div>
-          </label>
+        <div class="flex items-center mb-6">
+          <span class="text-2xl mr-3">{{ typeLabels[formType].icon }}</span>
+          <h2 class="text-xl font-bold text-gray-900">{{ typeLabels[formType].stepTitle }}</h2>
         </div>
-      </div>
-
-      <!-- Step 2: Basic Info -->
-      <div v-if="currentStep === 2" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 class="text-xl font-bold text-gray-900 mb-6">Informations détaillées</h2>
         
         <div class="space-y-6">
           <BaseInput
             v-model="formData.title"
             label="Titre"
             type="text"
-            placeholder="Titre concis de votre demande"
+            :placeholder="typeLabels[formType].titlePlaceholder"
             hint="Minimum 5 caractères"
           />
           
           <BaseTextarea
             v-model="formData.description"
             label="Description"
-            placeholder="Décrivez en détail les faits, les circonstances et toute information utile..."
+            :placeholder="typeLabels[formType].descriptionPlaceholder"
             :rows="6"
             hint="Minimum 20 caractères"
           />
+          
+          <!-- Signalement-specific fields -->
+          <template v-if="formType === 'signalement'">
+            <BaseInput
+              v-model="formData.suspectName"
+              label="Nom de la personne suspecte (optionnel)"
+              type="text"
+              placeholder="Nom et prénom si connu"
+            />
+            
+            <BaseInput
+              v-model="formData.suspectOrganization"
+              label="Organisation / Entreprise (optionnel)"
+              type="text"
+              placeholder="Nom de l'organisation impliquée"
+            />
+            
+            <BaseInput
+              v-model="formData.incidentDate"
+              label="Date des faits"
+              type="date"
+            />
+            
+            <BaseInput
+              v-model="formData.incidentLocation"
+              label="Lieu des faits"
+              type="text"
+              placeholder="Ville, région, adresse si connue"
+            />
+          </template>
+          
+          <!-- Verification-specific fields -->
+          <template v-else>
+            <BaseInput
+              v-model="formData.sourceToVerify"
+              label="Source à vérifier"
+              type="text"
+              placeholder="URL, nom du média, auteur de l'information..."
+              hint="Indiquez la source exacte de l'information à vérifier"
+            />
+            
+            <BaseTextarea
+              v-model="formData.verificationContext"
+              label="Contexte supplémentaire"
+              placeholder="Quand avez-vous vu cette information ? Dans quel contexte ?"
+              :rows="4"
+            />
+          </template>
         </div>
       </div>
 
-      <!-- Step 3: Anonymous Option -->
-      <div v-if="currentStep === 3" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <!-- Step 2: Anonymous Option -->
+      <div v-if="currentStep === 2" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 class="text-xl font-bold text-gray-900 mb-6">Anonymat</h2>
         
         <div class="space-y-4">
@@ -249,8 +321,8 @@ const typeOptions = [
         </div>
       </div>
 
-      <!-- Step 4: Document Upload -->
-      <div v-if="currentStep === 4" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <!-- Step 3: Document Upload -->
+      <div v-if="currentStep === 3" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 class="text-xl font-bold text-gray-900 mb-6">Documents (optionnel)</h2>
         
         <div class="space-y-4">
@@ -273,7 +345,7 @@ const typeOptions = [
           <!-- Document Previews -->
           <div v-if="documentPreviews.length > 0" class="space-y-2">
             <div
-              v-for="(preview, index) in documentPreviews"
+              v-for="(_, index) in documentPreviews"
               :key="index"
               class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
             >
@@ -292,15 +364,16 @@ const typeOptions = [
         </div>
       </div>
 
-      <!-- Step 5: Review -->
-      <div v-if="currentStep === 5" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <!-- Step 4: Review -->
+      <div v-if="currentStep === 4" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 class="text-xl font-bold text-gray-900 mb-6">Vérification finale</h2>
         
         <div class="space-y-6">
           <div class="bg-gray-50 rounded-lg p-4">
             <div class="text-sm text-gray-500 mb-1">Type</div>
-            <div class="font-medium text-gray-900">
-              {{ formData.type === 'signalement' ? 'Signalement' : 'Vérification' }}
+            <div class="font-medium text-gray-900 flex items-center">
+              <span class="mr-2">{{ typeLabels[formType].icon }}</span>
+              {{ typeLabels[formType].title }}
             </div>
           </div>
           
@@ -342,7 +415,7 @@ const typeOptions = [
         <div v-else></div>
         
         <BaseButton
-          v-if="currentStep < 5"
+          v-if="currentStep < 4"
           variant="primary"
           :disabled="!canProceed"
           @click="nextStep"

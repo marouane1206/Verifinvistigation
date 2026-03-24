@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import BaseInput from '../components/BaseInput.vue'
@@ -15,44 +15,39 @@ const formData = ref({
 })
 
 const errors = ref<Record<string, string>>({})
-
-// Check for unconfirmed email query parameter on mount
-onMounted(() => {
-  if (route.query.unconfirmed === '1') {
-    errors.value.general = 'Veuillez confirmer votre email avant de accéder à cette page'
-    // Clear the query parameter to avoid showing the message again on refresh
-    router.replace({ query: { redirect: route.query.redirect } })
-  }
-})
+const loading = ref(false)
 
 async function handleSubmit() {
   errors.value = {}
+  loading.value = true
   
   if (!formData.value.email) {
     errors.value.email = 'L\'email est requis'
+    loading.value = false
     return
   }
   
   if (!formData.value.password) {
     errors.value.password = 'Le mot de passe est requis'
+    loading.value = false
     return
   }
 
+  // Attempt login
   const success = await authStore.login(formData.value.email, formData.value.password)
   
+  loading.value = false
+  
   if (success) {
-    // Check if user has journalist role and redirect accordingly
-    console.log('[Login] Login success, checking role for redirect...')
-    console.log('[Login] user:', authStore.user)
-    console.log('[Login] isJournalist:', authStore.isJournalist)
-    
-    const redirect = route.query.redirect as string
-    if (redirect) {
+    // Check if user has admin role
+    if (authStore.isAdmin) {
+      // Redirect to admin dashboard
+      const redirect = route.query.redirect as string || '/admin'
       router.push(redirect)
-    } else if (authStore.isJournalist) {
-      router.push('/journalistes/dashboard')
     } else {
-      router.push('/users/dashboard')
+      // User is logged in but not an admin
+      await authStore.logout()
+      errors.value.general = 'Vous n\'avez pas les droits d\'administration'
     }
   } else {
     errors.value.general = authStore.error || 'Erreur de connexion'
@@ -64,10 +59,10 @@ async function handleSubmit() {
   <div class="min-h-screen bg-ardoise-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-md">
       <h2 class="mt-6 text-center text-3xl font-bold text-gray-900">
-        Connexion
+        Administration
       </h2>
       <p class="mt-2 text-center text-sm text-gray-600">
-        Accédez à votre compte Verifinvestigation
+        Connexion à l'espace administrator
       </p>
     </div>
 
@@ -85,9 +80,9 @@ async function handleSubmit() {
           <!-- Email -->
           <BaseInput
             v-model="formData.email"
-            label="Adresse email"
+            label="Adresse email administrateur"
             type="email"
-            placeholder="vous@exemple.com"
+            placeholder="admin@exemple.com"
             :error="errors.email"
             required
             autocomplete="email"
@@ -110,21 +105,21 @@ async function handleSubmit() {
               type="submit"
               variant="primary"
               class="w-full"
-              :loading="authStore.loading"
+              :loading="loading"
             >
-              Se connecter
+              Se connecter en tant qu'admin
             </BaseButton>
           </div>
 
-          <!-- Register Link -->
+          <!-- Back to regular login -->
           <div class="text-center">
             <p class="text-sm text-gray-600">
-              Pas encore de compte ?
+              Pas un administrateur ?
               <router-link
-                :to="{ name: 'register', query: route.query }"
+                :to="{ name: 'login', query: route.query }"
                 class="font-medium text-nuit-600 hover:text-nuit-500"
               >
-                Créer un compte
+                Retour à la connexion utilisateur
               </router-link>
             </p>
           </div>
