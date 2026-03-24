@@ -162,6 +162,68 @@ const routes = [
     component: AdminMediaView,
     meta: { role: 'admin' as RouteRole },
   },
+  // Additional User Management routes
+  {
+    path: '/admin/users/create',
+    name: 'admin-users-create',
+    component: AdminUsersView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
+    path: '/admin/users/roles',
+    name: 'admin-users-roles',
+    component: AdminUsersView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
+    path: '/admin/users/activity',
+    name: 'admin-users-activity',
+    component: AdminUsersView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  // Journalist Management routes
+  {
+    path: '/admin/journalists',
+    name: 'admin-journalists',
+    component: AdminUsersView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
+    path: '/admin/journalists/approvals',
+    name: 'admin-journalists-approvals',
+    component: AdminUsersView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
+    path: '/admin/journalists/articles',
+    name: 'admin-journalists-articles',
+    component: AdminUsersView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
+    path: '/admin/journalists/performance',
+    name: 'admin-journalists-performance',
+    component: AdminUsersView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
+    path: '/admin/reports',
+    name: 'admin-reports',
+    component: AdminReportsView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
+    path: '/admin/investigations',
+    name: 'admin-investigations',
+    component: AdminInvestigationsView,
+    meta: { role: 'admin' as RouteRole },
+  },
+  {
+    path: '/admin/settings',
+    name: 'admin-settings',
+    component: SettingsView,
+    meta: { role: 'admin' as RouteRole },
+  },
 ]
 
 const router = createRouter({
