@@ -123,10 +123,10 @@ onMounted(() => {
       <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-gray-900">
-            Médiathèque Utilisateurs
+            {{ pageTitle }}
           </h1>
           <p class="text-gray-600 mt-1">
-            Gérer les fichiers uploadés par les utilisateurs (non-admins et non-journalistes)
+            {{ pageDescription }}
           </p>
         </div>
         <div class="mt-4 md:mt-0 flex gap-3">
