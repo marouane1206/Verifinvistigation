@@ -206,13 +206,9 @@ async function handleSubmit() {
     
     if (applicationError) {
       console.error('[JournalistRegister] Application error:', applicationError)
-      // Rollback: delete the created auth user since application creation failed
-      try {
-        await supabase.auth.admin.deleteUser(authData.user.id)
-        console.log('[JournalistRegister] Rolled back user creation due to application failure')
-      } catch (deleteError) {
-        console.error('[JournalistRegister] Failed to rollback user deletion:', deleteError)
-      }
+      // Note: Cannot rollback user deletion from frontend without service role key
+      // The user will remain in auth but with no application - admin can handle cleanup
+      console.warn('[JournalistRegister] User created but application failed - manual cleanup may be needed')
       errorMessage.value = 'Erreur lors de la soumission de la demande'
       isSubmitting.value = false
       return
