@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import TheNavbar from './components/TheNavbar.vue'
 import AdminNav from './components/AdminNav.vue'
 import TheFooter from './components/TheFooter.vue'
@@ -8,7 +8,6 @@ import { useAuthStore } from './stores/auth'
 import { supabase } from './lib/supabase'
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
