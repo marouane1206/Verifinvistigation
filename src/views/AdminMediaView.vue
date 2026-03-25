@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore, type MediaFile } from '../stores/admin'
 import BaseButton from '../components/BaseButton.vue'
@@ -22,6 +22,17 @@ const mediaContext = computed(() => {
     return 'journalist'
   }
   return 'user'
+})
+
+// Fetch media files based on current context
+const fetchMedia = () => {
+  const filterRole = mediaContext.value === 'journalist' ? 'journalist' : 'user'
+  adminStore.fetchMediaFiles(filterRole)
+}
+
+// Watch route path changes to re-fetch media when switching between user roles
+watch(() => route.path, () => {
+  fetchMedia()
 })
 
 // Page title based on context
@@ -146,8 +157,7 @@ const copyUrl = async (url: string) => {
 }
 
 onMounted(() => {
-  const filterRole = mediaContext.value === 'journalist' ? 'journalist' : 'user'
-  adminStore.fetchMediaFiles(filterRole)
+  fetchMedia()
 })
 </script>
 
