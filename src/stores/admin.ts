@@ -59,6 +59,8 @@ export const useAdminStore = defineStore('admin', () => {
   const investigations = ref<Investigation[]>([])
   const mediaFiles = ref<MediaFile[]>([])
   const applications = ref<JournalistApplication[]>([])
+  const archivedReports = ref<Report[]>([])
+  const archivedLoading = ref(false)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const stats = ref<AdminStats>({
@@ -507,6 +509,7 @@ export const useAdminStore = defineStore('admin', () => {
           profiles:created_by (username, email),
           assigned_profile:assigned_to (username)
         `)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -611,26 +614,243 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  async function deleteReport(reportId: string) {
+  // Soft-delete a report (archive with audit trail)
+  async function deleteReport(reportId: string, reason: string = '') {
     loading.value = true
     error.value = null
     try {
-      const { error: deleteError } = await supabase
+      // Check if the report exists
+      const { data: report, error: fetchError } = await supabase
         .from('reports')
-        .delete()
+        .select('*, profiles:created_by(username), assigned_profile:assigned_to(username)')
         .eq('id', reportId)
+        .single()
+
+      if (fetchError || !report) {
+        error.value = 'Signalement non trouvé'
+        return false
+      }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        error.value = 'Utilisateur non connecté'
+        return false
+      }
+
+      // Use the RPC function to soft-delete and create audit log
+      const { data: result, error: deleteError } = await supabase.rpc('soft_delete_report', {
+        p_report_id: reportId,
+        p_deleted_by: user.id,
+        p_reason: reason || null
+      })
 
       if (deleteError) {
         error.value = deleteError.message
         return false
       }
 
+      if (!result) {
+        error.value = 'Échec de la suppression du signalement'
+        return false
+      }
+
+      // Remove from local state
       reports.value = reports.value.filter(r => r.id !== reportId)
+
+      // Add to archived reports for potential restore
+      archivedReports.value.unshift({
+        ...report,
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deleted_by: user.id,
+        deletion_reason: reason
+      })
+
+      // Refresh stats to reflect the deletion
+      await fetchStats()
+      
       return true
     } catch (e) {
-      error.value = 'Erreur lors de la suppression du signalement'
+      error.value = 'Erreur lors de la suppression'
       console.error('Error deleting report:', e)
       return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Restore a soft-deleted report
+  async function restoreReport(reportId: string) {
+    loading.value = true
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        error.value = 'Utilisateur non connecté'
+        return false
+      }
+
+      const { data: result, error: restoreError } = await supabase.rpc('restore_report', {
+        p_report_id: reportId,
+        p_restored_by: user.id
+      })
+
+      if (restoreError) {
+        error.value = restoreError.message
+        return false
+      }
+
+      if (!result) {
+        error.value = 'Échec de la restauration du signalement'
+        return false
+      }
+
+      // Fetch the restored report and add back to list
+      const { data: restoredReport } = await supabase
+        .from('reports')
+        .select('*, profiles:created_by(username), assigned_profile:assigned_to(username)')
+        .eq('id', reportId)
+        .single()
+
+      if (restoredReport) {
+        const formattedReport = {
+          ...restoredReport,
+          username: restoredReport.profiles?.username,
+          assigned_username: restoredReport.assigned_profile?.username
+        }
+        reports.value.unshift(formattedReport)
+      }
+
+      // Remove from archived
+      archivedReports.value = archivedReports.value.filter(r => r.id !== reportId)
+
+      // Refresh stats
+      await fetchStats()
+
+      return true
+    } catch (e) {
+      error.value = 'Erreur lors de la restauration'
+      console.error('Error restoring report:', e)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Fetch archived (soft-deleted) reports
+  async function fetchArchivedReports() {
+    archivedLoading.value = true
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('reports')
+        .select('*, profiles:created_by(username), assigned_profile:assigned_to(username)')
+        .eq('is_deleted', true)
+        .order('deleted_at', { ascending: false })
+
+      if (fetchError) {
+        error.value = fetchError.message
+        return []
+      }
+
+      const flattenedData = data?.map(report => ({
+        ...report,
+        username: report.profiles?.username,
+        assigned_username: report.assigned_profile?.username
+      })) || []
+
+      archivedReports.value = flattenedData
+      return flattenedData
+    } catch (e) {
+      error.value = 'Erreur lors de la récupération des archives'
+      console.error('Error fetching archived reports:', e)
+      return []
+    } finally {
+      archivedLoading.value = false
+    }
+  }
+
+  // Permanently delete a report (admin only)
+  async function permanentlyDeleteReport(reportId: string) {
+    loading.value = true
+    try {
+      const { data: result, error: permDeleteError } = await supabase.rpc('permanently_delete_report', {
+        p_report_id: reportId
+      })
+
+      if (permDeleteError) {
+        error.value = permDeleteError.message
+        return false
+      }
+
+      if (!result) {
+        error.value = 'Échec de la suppression permanente'
+        return false
+      }
+
+      // Remove from archived
+      archivedReports.value = archivedReports.value.filter(r => r.id !== reportId)
+
+      return true
+    } catch (e) {
+      error.value = 'Erreur lors de la suppression permanente'
+      console.error('Error permanently deleting report:', e)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Bulk delete multiple reports
+  async function bulkDeleteReports(reportIds: string[], reason: string = '') {
+    loading.value = true
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        error.value = 'Utilisateur non connecté'
+        return { successful: 0, failed: reportIds.length }
+      }
+
+      // Verify admin role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError || !profile || profile.role !== 'admin') {
+        error.value = 'Accès refusé: права администратора требуются'
+        return { successful: 0, failed: reportIds.length }
+      }
+
+      const results = await Promise.all(
+        reportIds.map(async (id) => {
+          const { error } = await supabase.rpc('soft_delete_report', {
+            p_report_id: id,
+            p_deleted_by: user.id,
+            p_reason: reason || null
+          })
+          return { id, success: !error, error: error?.message }
+        })
+      )
+
+      const successfulIds = results.filter(r => r.success).map(r => r.id)
+      
+      // Remove from local state
+      reports.value = reports.value.filter(r => !successfulIds.includes(r.id))
+
+      // Refresh stats
+      await fetchStats()
+
+      const failedCount = results.filter(r => !r.success).length
+      if (failedCount > 0) {
+        error.value = `${failedCount} suppression(s) ont échoué`
+      }
+
+      return { successful: successfulIds.length, failed: failedCount }
+    } catch (e) {
+      error.value = 'Erreur lors de la suppression en masse'
+      console.error('Error bulk deleting reports:', e)
+      return { successful: 0, failed: reportIds.length }
     } finally {
       loading.value = false
     }
@@ -869,10 +1089,11 @@ export const useAdminStore = defineStore('admin', () => {
         stats.value.totalAdmins = usersData.filter(u => u.role === 'admin').length
       }
 
-      // Get report counts
+      // Get report counts (exclude deleted records)
       const { data: reportsData } = await supabase
         .from('reports')
         .select('status')
+        .eq('is_deleted', false)
 
       if (reportsData) {
         stats.value.totalReports = reportsData.length
@@ -981,6 +1202,12 @@ export const useAdminStore = defineStore('admin', () => {
     updateReportStatus,
     assignReport,
     deleteReport,
+    restoreReport,
+    fetchArchivedReports,
+    permanentlyDeleteReport,
+    bulkDeleteReports,
+    archivedReports,
+    archivedLoading,
     // Investigations Actions
     fetchAllInvestigations,
     toggleInvestigationPublish,

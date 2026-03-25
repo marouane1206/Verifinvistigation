@@ -89,6 +89,7 @@ async function handleDelete() {
   const success = await reportsStore.deleteReport(
     props.report.id,
     authStore.user.id,
+    '',
     authStore.isAdmin
   )
   
