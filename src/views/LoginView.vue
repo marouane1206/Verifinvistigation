@@ -39,6 +39,14 @@ onMounted(async () => {
     console.error('[LoginView] Auth initialization failed:', error)
   }
   
+  // Check for error from confirmation link (expired/invalid link)
+  const confirmationError = sessionStorage.getItem('confirmation_error')
+  if (confirmationError) {
+    errors.value.general = confirmationError
+    // Clear the stored error
+    sessionStorage.removeItem('confirmation_error')
+  }
+  
   if (route.query.unconfirmed === '1') {
     errors.value.general = 'Veuillez confirmer votre email avant de accéder à cette page'
     // Clear the query parameter to avoid showing the message again on refresh

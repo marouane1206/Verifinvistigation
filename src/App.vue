@@ -21,7 +21,23 @@ async function parseHashUrlTokens() {
     tokenHash = hash.substring(1) // Remove the leading #
   }
   
-  if (!tokenHash || !tokenHash.includes('access_token')) return
+  if (!tokenHash || !tokenHash.includes('access_token')) {
+    // Check for error in hash (e.g., expired confirmation link)
+    if (tokenHash && tokenHash.includes('error=')) {
+      const hashParams = new URLSearchParams(tokenHash)
+      const error = hashParams.get('error')
+      const errorDescription = hashParams.get('error_description')
+      
+      if (error) {
+        console.log('[APP] Error in URL hash:', error, errorDescription)
+        // Store error for display in LoginView
+        sessionStorage.setItem('confirmation_error', errorDescription || error)
+        // Clear the hash after processing
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+    }
+    return
+  }
 
   // Parse the parameters from the hash
   const hashParams = new URLSearchParams(tokenHash)
@@ -48,14 +64,16 @@ async function parseHashUrlTokens() {
       const { error } = await supabase.auth.setSession(tokenData)
       if (error) {
         console.error('[APP] Error setting session from hash tokens:', error)
+        // Store error for display
+        sessionStorage.setItem('confirmation_error', error.message)
       } else {
         console.log('[APP] Session established from URL tokens')
-        // Clear the hash after successful token processing
-        // But preserve the base path for routing
-        window.history.replaceState(null, '', window.location.pathname)
-        // Reinitialize auth store
-        await authStore.initialize()
       }
+      // Clear the hash after successful token processing
+      // But preserve the base path for routing
+      window.history.replaceState(null, '', window.location.pathname)
+      // Reinitialize auth store
+      await authStore.initialize()
     } catch (e) {
       console.error('[APP] Exception setting session from hash tokens:', e)
     }
