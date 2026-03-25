@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore, type AdminUser } from '../stores/admin'
 import { useAuthStore } from '../stores/auth'
 import BaseButton from '../components/BaseButton.vue'
 
 const route = useRoute()
+const router = useRouter()
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 
@@ -23,6 +24,11 @@ const newUserEmail = ref('')
 const newUserUsername = ref('')
 const newUserRole = ref<'user' | 'journalist' | 'admin'>('user')
 const isCreatingUser = ref(false)
+
+// Success message state
+const showSuccessMessage = ref(false)
+const successMessage = ref('')
+const tempPasswordDisplay = ref('')
 
 // Create journalist modal state
 const showCreateJournalistModal = ref(false)
@@ -137,7 +143,20 @@ const openRoleModal = (user: AdminUser) => {
 const updateRole = async () => {
   if (!userToEdit.value) return
   
-  await adminStore.updateUserRole(userToEdit.value.id, newRole.value)
+  // Skip if role hasn't changed
+  if (newRole.value === userToEdit.value.role) {
+    showRoleModal.value = false
+    userToEdit.value = null
+    return
+  }
+  
+  // Navigate to profile edit page with the new role as a query parameter
+  // This allows the admin to complete any missing required information before saving
+  router.push({ 
+    name: 'admin-user-edit', 
+    params: { id: userToEdit.value.id },
+    query: { role: newRole.value }
+  })
   showRoleModal.value = false
   userToEdit.value = null
 }
@@ -163,12 +182,21 @@ const deleteUser = async () => {
   userToDelete.value = null
 }
 
+// Navigate to user profile edit page
+const editUserProfile = (user: AdminUser) => {
+  router.push({ name: 'admin-user-edit', params: { id: user.id } })
+}
+
 // Create user functions
 const openCreateModal = () => {
   newUserEmail.value = ''
   newUserUsername.value = ''
   newUserRole.value = 'user'
   adminStore.clearError()
+  // Reset success message state
+  showSuccessMessage.value = false
+  successMessage.value = ''
+  tempPasswordDisplay.value = ''
   showCreateModal.value = true
 }
 
@@ -206,6 +234,25 @@ const createUser = async () => {
     newUserEmail.value = ''
     newUserUsername.value = ''
     newUserRole.value = 'user'
+    
+    // Handle success message based on email status
+    if (result.user && !result.error) {
+      if (result.emailSent) {
+        // Email sent successfully
+        successMessage.value = `Un email avec le mot de passe temporaire a été envoyé à ${newUserEmail.value.trim()}`
+      } else {
+        // Email failed to send - show password
+        successMessage.value = "Échec de l'envoi de l'email. Le compte utilisateur a été créé mais vous devrez communiquer manuellement le mot de passe temporaire à l'utilisateur."
+        tempPasswordDisplay.value = result.tempPassword || ''
+      }
+      showSuccessMessage.value = true
+      // Auto-hide success message after 10 seconds
+      setTimeout(() => {
+        showSuccessMessage.value = false
+        successMessage.value = ''
+        tempPasswordDisplay.value = ''
+      }, 10000)
+    }
   }
 }
 
@@ -220,6 +267,10 @@ const openCreateJournalistModal = () => {
   journalistSpecialization.value = ''
   journalistPortfolioUrl.value = ''
   adminStore.clearError()
+  // Reset success message state
+  showSuccessMessage.value = false
+  successMessage.value = ''
+  tempPasswordDisplay.value = ''
   showCreateJournalistModal.value = true
 }
 
@@ -271,6 +322,25 @@ const createJournalist = async () => {
     journalistYearsExperience.value = undefined
     journalistSpecialization.value = ''
     journalistPortfolioUrl.value = ''
+    
+    // Handle success message based on email status
+    if (result.user && !result.error) {
+      if (result.emailSent) {
+        // Email sent successfully
+        successMessage.value = `Un email avec le mot de passe temporaire a été envoyé à ${journalistEmail.value.trim()}`
+      } else {
+        // Email failed to send - show password
+        successMessage.value = "Échec de l'envoi de l'email. Le compte utilisateur a été créé mais vous devrez communiquer manuellement le mot de passe temporaire à l'utilisateur."
+        tempPasswordDisplay.value = result.tempPassword || ''
+      }
+      showSuccessMessage.value = true
+      // Auto-hide success message after 10 seconds
+      setTimeout(() => {
+        showSuccessMessage.value = false
+        successMessage.value = ''
+        tempPasswordDisplay.value = ''
+      }, 10000)
+    }
   }
 }
 
@@ -358,6 +428,29 @@ onMounted(() => {
         <p class="text-alerte-700">{{ adminStore.error }}</p>
       </div>
 
+      <!-- Success Message -->
+      <div v-if="showSuccessMessage" class="bg-vert-50 border border-vert-200 rounded-lg p-4 mb-6">
+        <div class="flex items-start">
+          <div class="shrink-0">
+            <span class="text-vert-500 text-xl">✓</span>
+          </div>
+          <div class="ml-3 flex-1">
+            <p class="text-vert-700">{{ successMessage }}</p>
+            <div v-if="tempPasswordDisplay" class="mt-2 p-3 bg-white border border-vert-200 rounded">
+              <p class="text-sm text-vert-600 font-medium">Mot de passe temporaire:</p>
+              <p class="text-lg font-mono text-vert-800 select-all">{{ tempPasswordDisplay }}</p>
+            </div>
+          </div>
+          <button 
+            @click="showSuccessMessage = false; successMessage = ''; tempPasswordDisplay = ''" 
+            class="text-vert-400 hover:text-vert-600 ml-3"
+            title="Fermer"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
       <!-- Users Table -->
       <div v-else class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
@@ -384,12 +477,12 @@ onMounted(() => {
             <tbody class="divide-y divide-gray-200">
               <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
+                  <div class="flex items-center cursor-pointer" @click="editUserProfile(user)">
                     <div class="h-10 w-10 rounded-full bg-nuit-100 flex items-center justify-center">
                       <span class="text-nuit-600 font-medium">{{ user.username.charAt(0).toUpperCase() }}</span>
                     </div>
                     <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">{{ user.username }}</div>
+                      <div class="text-sm font-medium text-nuit-600 hover:text-nuit-800">{{ user.username }}</div>
                     </div>
                   </div>
                 </td>
@@ -408,8 +501,15 @@ onMounted(() => {
                   <div class="flex justify-end gap-2">
                     <button
                       @click="openRoleModal(user)"
-                      class="text-nuit-600 hover:text-nuit-800"
+                      class="text-bleu-600 hover:text-bleu-800"
                       title="Modifier le rôle"
+                    >
+                      👤
+                    </button>
+                    <button
+                      @click="editUserProfile(user)"
+                      class="text-nuit-600 hover:text-nuit-800"
+                      title="Modifier le profil"
                     >
                       ✏️
                     </button>

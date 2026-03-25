@@ -288,6 +288,22 @@ CREATE POLICY "Les utilisateurs peuvent modifier leur propre profil"
     ON public.profiles FOR UPDATE
     USING (auth.uid() = id);
 
+-- Politique: Les admins peuvent modifier tous les profils
+CREATE POLICY "Les admins peuvent modifier tous les profils"
+    ON public.profiles FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );
+
 -- Politique: Seul un admin peut insérer de nouveaux profils (via trigger automatique)
 CREATE POLICY "Seul un admin peut insérer des profils"
     ON public.profiles FOR INSERT

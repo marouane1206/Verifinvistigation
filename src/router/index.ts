@@ -212,6 +212,13 @@ const routes = [
     component: AdminUsersView,
     meta: { role: 'admin' as RouteRole },
   },
+  // Admin user profile editing route
+  {
+    path: '/admin/user/:id/edit',
+    name: 'admin-user-edit',
+    component: SettingsView,
+    meta: { role: 'admin' as RouteRole },
+  },
   {
     path: '/admin/journalists/media',
     name: 'admin-journalists-media',

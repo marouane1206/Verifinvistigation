@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAdminStore } from '../stores/admin'
 import { useApplicationsStore, type JournalistApplication } from '../stores/applications'
 import BaseButton from '../components/BaseButton.vue'
 
+const router = useRouter()
 const adminStore = useAdminStore()
 const applicationsStore = useApplicationsStore()
 
@@ -136,6 +138,11 @@ const rejectApplication = async () => {
   }
 }
 
+// Navigate to user profile edit page
+const editUserProfile = (userId: string) => {
+  router.push({ name: 'admin-user-edit', params: { id: userId } })
+}
+
 // Lifecycle
 onMounted(async () => {
   await applicationsStore.getAllApplications()
@@ -243,12 +250,12 @@ onMounted(async () => {
                 @click="openDetailModal(app)"
               >
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
+                  <div class="flex items-center" @click.stop>
                     <div class="h-10 w-10 rounded-full bg-nuit-100 flex items-center justify-center">
                       <span class="text-nuit-600 font-medium">{{ app.full_name.charAt(0).toUpperCase() }}</span>
                     </div>
                     <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">{{ app.full_name }}</div>
+                      <div class="text-sm font-medium" :class="app.user_id ? 'text-nuit-600 hover:text-nuit-800' : 'text-gray-900'">{{ app.full_name }}</div>
                     </div>
                   </div>
                 </td>
@@ -268,6 +275,14 @@ onMounted(async () => {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex justify-end gap-2" @click.stop>
+                    <button
+                      v-if="app.user_id"
+                      @click="editUserProfile(app.user_id)"
+                      class="text-nuit-600 hover:text-nuit-800 px-3 py-1 text-sm"
+                      title="Modifier le profil"
+                    >
+                      ✏️
+                    </button>
                     <button
                       v-if="app.status === 'pending'"
                       @click="openDetailModal(app)"

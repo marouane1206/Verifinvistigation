@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '../lib/supabase'
+import { generateSecurePassword } from '../lib/password'
 import type { Report, ReportStatus } from './reports'
 import type { Investigation } from './investigations'
 import type { JournalistApplication } from './applications'
@@ -105,46 +106,75 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Generate a cryptographically secure random password
-  function generatePassword(length: number = 12): string {
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
-    const randomValues = new Uint32Array(length)
-    crypto.getRandomValues(randomValues)
-    let password = ''
-    for (let i = 0; i < length; i++) {
-      password += charset.charAt(randomValues[i] % charset.length)
+  // Send temporary password email via edge function
+  async function sendTemporaryPasswordEmail(
+    email: string,
+    temporaryPassword: string,
+    username: string,
+    role: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[Email] Sending temporary password email to:', email)
+      
+      const { data, error } = await supabase.functions.invoke('send-temporary-password', {
+        body: {
+          email,
+          temporaryPassword,
+          username,
+          role
+        }
+      })
+
+      if (error) {
+        console.error('[Email] Failed to send temporary password email:', error)
+        return { success: false, error: error.message }
+      }
+
+      console.log('[Email] Temporary password email sent successfully:', data)
+      return { success: true }
+    } catch (e) {
+      console.error('[Email] Exception sending temporary password email:', e)
+      return { success: false, error: e instanceof Error ? e.message : 'Unknown error' }
     }
-    return password
   }
 
   // Create user with optional role assignment
   async function createUser(email: string, username: string, role: 'user' | 'journalist' | 'admin' = 'user') {
     loading.value = true
     error.value = null
+    let emailSent = false
     try {
-      // Generate a cryptographically secure password for the user
-      const tempPassword = generatePassword(12)
+      // Generate a cryptographically secure password using the new function
+      console.log('[User] Generating secure password for new user')
+      const tempPassword = generateSecurePassword()
+      console.log('[User] Password generated successfully')
 
       // Create user in auth.users via admin API
+      console.log('[User] Creating user in Supabase Auth:', email)
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
         email_confirm: true,
         password: tempPassword,
         user_metadata: {
           username,
-          role
+          role,
+          force_password_change: true
         }
       })
 
       if (authError) {
         error.value = authError.message
-        return null
+        console.error('[User] Auth error:', authError.message)
+        return { user: null, emailSent: false, error: authError.message }
       }
 
       if (!authData.user) {
         error.value = 'Erreur lors de la création de l\'utilisateur'
-        return null
+        console.error('[User] No user data returned')
+        return { user: null, emailSent: false, error: 'No user data returned' }
       }
+
+      console.log('[User] User created successfully:', authData.user.id)
 
       // Check if profile already exists (created by trigger), if not create it
       const { data: existingProfile } = await supabase
@@ -169,7 +199,8 @@ export const useAdminStore = defineStore('admin', () => {
 
         if (profileError) {
           error.value = profileError.message
-          return null
+          console.error('[User] Profile update error:', profileError.message)
+          return { user: null, emailSent: false, error: profileError.message }
         }
         profileData = updatedProfile
       } else {
@@ -188,7 +219,8 @@ export const useAdminStore = defineStore('admin', () => {
 
         if (profileError) {
           error.value = profileError.message
-          return null
+          console.error('[User] Profile insert error:', profileError.message)
+          return { user: null, emailSent: false, error: profileError.message }
         }
         profileData = insertedProfile
       }
@@ -198,11 +230,23 @@ export const useAdminStore = defineStore('admin', () => {
         users.value.unshift(profileData)
       }
 
-      return profileData
+      // Send temporary password email (don't fail user creation if email fails)
+      console.log('[User] Sending temporary password email...')
+      const emailResult = await sendTemporaryPasswordEmail(email, tempPassword, username, role)
+      emailSent = emailResult.success
+      
+      if (!emailResult.success) {
+        // Log the error but don't fail the user creation
+        console.error('[User] Email sending failed:', emailResult.error)
+        console.log('[User] User was created successfully. Admin can communicate password manually.')
+      }
+
+      console.log('[User] User creation completed successfully')
+      return { user: profileData, emailSent, error: null, tempPassword }
     } catch (e) {
       error.value = 'Erreur lors de la création de l\'utilisateur'
-      console.error('Error creating user:', e)
-      return null
+      console.error('[User] Exception creating user:', e)
+      return { user: null, emailSent, error: e instanceof Error ? e.message : 'Unknown error', tempPassword: null }
     } finally {
       loading.value = false
     }
@@ -222,11 +266,15 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     let authUserId: string | null = null
+    let emailSent = false
     try {
-      // Generate a cryptographically secure password for the user
-      const tempPassword = generatePassword(12)
+      // Generate a cryptographically secure password using the new function
+      console.log('[Journalist] Generating secure password for new journalist')
+      const tempPassword = generateSecurePassword()
+      console.log('[Journalist] Password generated successfully')
 
       // Create user in auth.users via admin API
+      console.log('[Journalist] Creating user in Supabase Auth:', email)
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
         email_confirm: true,
@@ -234,21 +282,25 @@ export const useAdminStore = defineStore('admin', () => {
         user_metadata: {
           username,
           role: 'journalist',
-          is_journalist: true
+          is_journalist: true,
+          force_password_change: true
         }
       })
 
       if (authError) {
         error.value = authError.message
-        return null
+        console.error('[Journalist] Auth error:', authError.message)
+        return { user: null, emailSent: false, error: authError.message }
       }
 
       if (!authData.user) {
         error.value = 'Erreur lors de la création du journaliste'
-        return null
+        console.error('[Journalist] No user data returned')
+        return { user: null, emailSent: false, error: 'No user data returned' }
       }
 
       authUserId = authData.user.id
+      console.log('[Journalist] User created successfully:', authUserId)
 
       // Check if profile already exists (created by trigger), if not create it
       const { data: existingProfile } = await supabase
@@ -284,7 +336,8 @@ export const useAdminStore = defineStore('admin', () => {
 
         if (profileError) {
           error.value = profileError.message
-          return null
+          console.error('[Journalist] Profile update error:', profileError.message)
+          return { user: null, emailSent: false, error: profileError.message }
         }
         profileData = updatedProfile
       } else {
@@ -313,7 +366,8 @@ export const useAdminStore = defineStore('admin', () => {
 
         if (profileError) {
           error.value = profileError.message
-          return null
+          console.error('[Journalist] Profile insert error:', profileError.message)
+          return { user: null, emailSent: false, error: profileError.message }
         }
         profileData = insertedProfile
       }
@@ -323,11 +377,23 @@ export const useAdminStore = defineStore('admin', () => {
         users.value.unshift(profileData)
       }
 
-      return profileData
+      // Send temporary password email (don't fail user creation if email fails)
+      console.log('[Journalist] Sending temporary password email...')
+      const emailResult = await sendTemporaryPasswordEmail(email, tempPassword, username, 'journalist')
+      emailSent = emailResult.success
+      
+      if (!emailResult.success) {
+        // Log the error but don't fail the user creation
+        console.error('[Journalist] Email sending failed:', emailResult.error)
+        console.log('[Journalist] User was created successfully. Admin can communicate password manually.')
+      }
+
+      console.log('[Journalist] Creation completed successfully')
+      return { user: profileData, emailSent, error: null, tempPassword }
     } catch (e) {
       error.value = 'Erreur lors de la création du journaliste'
-      console.error('Error creating journalist:', e)
-      return null
+      console.error('[Journalist] Exception creating journalist:', e)
+      return { user: null, emailSent, error: e instanceof Error ? e.message : 'Unknown error', tempPassword: null }
     } finally {
       loading.value = false
     }
@@ -359,6 +425,43 @@ export const useAdminStore = defineStore('admin', () => {
     } catch (e) {
       error.value = 'Erreur lors de la mise à jour du rôle'
       console.error('Error updating user role:', e)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateUserUsername(userId: string, newUsername: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const { data, error: updateError } = await supabase
+        .from('profiles')
+        .update({ username: newUsername, updated_at: new Date().toISOString() })
+        .eq('id', userId)
+        .select()
+        .single()
+
+      if (updateError) {
+        const errMsg = updateError.message.toLowerCase()
+        if (errMsg.includes('unique') || errMsg.includes('already exists')) {
+          error.value = 'Ce nom d\'utilisateur est déjà pris'
+        } else {
+          error.value = updateError.message
+        }
+        return null
+      }
+
+      // Update local state
+      const index = users.value.findIndex(u => u.id === userId)
+      if (index !== -1 && data) {
+        users.value[index] = data
+      }
+
+      return data
+    } catch (e) {
+      error.value = 'Erreur lors de la mise à jour du nom d\'utilisateur'
+      console.error('Error updating username:', e)
       return null
     } finally {
       loading.value = false
@@ -871,6 +974,7 @@ export const useAdminStore = defineStore('admin', () => {
     createUser,
     createJournalist,
     updateUserRole,
+    updateUserUsername,
     deleteUser,
     // Reports Actions
     fetchAllReports,

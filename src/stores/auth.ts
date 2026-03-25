@@ -16,6 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const emailConfirmationPending = ref(false)
+  const forcePasswordChange = ref(false)
 
   const isAuthenticated = computed(() => !!user.value)
   const isJournalist = computed(() => user.value?.role === 'journalist')
@@ -159,6 +160,9 @@ export const useAuthStore = defineStore('auth', () => {
         status: finalStatus,
         created_at: data.created_at,
       }
+      
+      // Check and set force password change flag
+      forcePasswordChange.value = data.force_password_change === true
     }
   }
 
@@ -189,6 +193,123 @@ export const useAuthStore = defineStore('auth', () => {
   function canAccessJournalistFeatures(): boolean {
     if (!user.value) return false
     return user.value.role === 'journalist' && user.value.status === 'active'
+  }
+
+  // Check if user needs to change their password
+  async function checkForcePasswordChange(): Promise<boolean> {
+    if (!user.value) return false
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('profiles')
+        .select('force_password_change')
+        .eq('id', user.value.id)
+        .single()
+      
+      if (fetchError) {
+        console.error('[AUTH] Error checking force password change:', fetchError)
+        return false
+      }
+      
+      forcePasswordChange.value = data?.force_password_change === true
+      return forcePasswordChange.value
+    } catch (e) {
+      console.error('[AUTH] Error checking force password change:', e)
+      return false
+    }
+  }
+
+  // Update user password and clear force password change flag
+  async function updatePassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+    if (!user.value) {
+      return { success: false, error: 'User not authenticated' }
+    }
+    
+    loading.value = true
+    error.value = null
+    
+    try {
+      // First, update the password in Supabase auth
+      const { error: authError } = await supabase.auth.updateUser({
+        password: newPassword,
+      })
+      
+      if (authError) {
+        const errMsg = authError.message.toLowerCase()
+        
+        if (errMsg.includes('password') && errMsg.includes('least') && errMsg.includes('6')) {
+          error.value = 'Le mot de passe doit contenir au moins 6 caractères'
+        } else if (errMsg.includes('password') && errMsg.includes('must contain')) {
+          if (errMsg.includes('uppercase')) {
+            error.value = 'Le mot de passe doit contenir au moins une majuscule'
+          } else if (errMsg.includes('number')) {
+            error.value = 'Le mot de passe doit contenir au moins un chiffre'
+          } else if (errMsg.includes('special')) {
+            error.value = 'Le mot de passe doit contenir au moins un caractère spécial'
+          } else {
+            error.value = 'Le mot de passe ne respecte pas les critères de sécurité'
+          }
+        } else if (errMsg.includes('recent') || errMsg.includes('too soon')) {
+          error.value = 'Vous avez récemment changé votre mot de passe. Veuillez patienter avant de le changer à nouveau.'
+        } else {
+          error.value = 'Erreur lors de la mise à jour du mot de passe'
+          console.error('[AUTH] Password update error:', authError.message)
+        }
+        return { success: false, error: error.value }
+      }
+      
+      // Then, update the profiles table to clear the force_password_change flag
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          force_password_change: false,
+          password_changed_at: new Date().toISOString(),
+        })
+        .eq('id', user.value.id)
+      
+      if (profileError) {
+        console.error('[AUTH] Error updating profile force_password_change:', profileError)
+        // Password was updated in auth, but profile update failed
+        // Still return success but log the error
+      }
+      
+      // Update local state
+      forcePasswordChange.value = false
+      
+      return { success: true }
+    } catch (e: any) {
+      console.error('[AUTH] Unexpected password update error:', e)
+      error.value = 'Une erreur inattendue est survenue lors de la mise à jour du mot de passe'
+      return { success: false, error: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Clear force password change flag directly (useful if password changed through other means)
+  async function clearForcePasswordChange(): Promise<boolean> {
+    if (!user.value) return false
+    
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          force_password_change: false,
+          password_changed_at: new Date().toISOString(),
+        })
+        .eq('id', user.value.id)
+      
+      if (updateError) {
+        console.error('[AUTH] Error clearing force password change:', updateError)
+        return false
+      }
+      
+      forcePasswordChange.value = false
+      return true
+    } catch (e) {
+      console.error('[AUTH] Error clearing force password change:', e)
+      return false
+    }
   }
 
   async function login(email: string, password: string) {
@@ -435,6 +556,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     error,
     emailConfirmationPending,
+    forcePasswordChange,
     isAuthenticated,
     isJournalist,
     isAdmin,
@@ -451,5 +573,8 @@ export const useAuthStore = defineStore('auth', () => {
     isEmailConfirmed,
     checkUserStatus,
     canAccessJournalistFeatures,
+    checkForcePasswordChange,
+    updatePassword,
+    clearForcePasswordChange,
   }
 })
