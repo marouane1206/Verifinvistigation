@@ -58,7 +58,7 @@ const services = [
     icon: '📰',
     title: 'Réseau Journalistes',
     description: 'Accédez à une plateforme collaborative pour les professionnels de l\'investigation.',
-    link: '/journalistes/dashboard',
+    link: '/journalistes/register',
     cta: 'Espace journaliste',
   },
 ]

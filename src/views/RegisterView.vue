@@ -16,8 +16,6 @@ const formData = ref({
   confirmPassword: '',
 })
 
-const isJournalist = ref(false)
-
 const acceptTerms = ref(false)
 const errors = ref<Record<string, string>>({})
 const isSubmitting = ref(false)
@@ -45,12 +43,6 @@ onMounted(async () => {
   }
 })
 
-async function handleJournalistCheckboxChange() {
-  if (isJournalist.value) {
-    // Automatically redirect to journalist registration form
-    router.push('/journalistes/register')
-  }
-}
 
 async function handleSubmit() {
   const now = Date.now()
@@ -107,8 +99,7 @@ async function handleSubmit() {
   const success = await authStore.register(
     formData.value.email,
     formData.value.password,
-    formData.value.username,
-    isJournalist.value
+    formData.value.username
   )
   
   if (success) {
@@ -149,6 +140,24 @@ async function handleSubmit() {
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
       <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
         <form class="space-y-6" @submit.prevent="handleSubmit">
+          <!-- Journalist Link (positioned at top) -->
+          <div class="bg-nuit-50 border-2 border-nuit-200 rounded-lg p-4">
+            <div class="text-center">
+              <p class="text-gray-700 font-medium mb-2">
+                Vous êtes journaliste et souhaitez rejoindre le réseau professionnel ?
+              </p>
+              <p class="text-sm text-gray-500 mb-3">
+                Utilisez le formulaire dédié aux professionnels de l'investigation
+              </p>
+              <router-link
+                to="/journalistes/register"
+                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-nuit-600 hover:bg-nuit-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nuit-500 transition-colors duration-200"
+              >
+                → Accéder au formulaire journaliste
+              </router-link>
+            </div>
+          </div>
+
           <!-- Success Message -->
           <div
             v-if="registrationSuccess"
@@ -228,26 +237,6 @@ async function handleSubmit() {
                 <a href="#" class="text-nuit-600 hover:text-nuit-500">politique de confidentialité</a>
               </label>
               <p v-if="errors.terms" class="text-alerte-600 mt-1">{{ errors.terms }}</p>
-            </div>
-          </div>
-
-          <!-- Journalist Checkbox -->
-          <div class="bg-nuit-50 border border-nuit-200 rounded-md p-4">
-            <div class="flex items-start">
-              <div class="flex items-center h-5">
-                <input
-                  id="is_journalist"
-                  v-model="isJournalist"
-                  type="checkbox"
-                  class="h-4 w-4 text-nuit-600 border-gray-300 rounded focus:ring-nuit-500"
-                  @change="handleJournalistCheckboxChange"
-                />
-              </div>
-              <div class="ml-3 text-sm">
-                <label for="is_journalist" class="font-medium text-gray-700">
-                  Je suis journaliste
-                </label>
-              </div>
             </div>
           </div>
 
