@@ -15,27 +15,53 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 // Parse tokens from hash URL (for OAuth/email confirmation links)
 async function parseHashUrlTokens() {
   const hash = window.location.hash
-  // Handle both standard hash format and Vue Router hash mode (#/)
+  
+  // Check for error in hash first (e.g., expired confirmation link)
+  // This must be checked BEFORE Vue Router processes the hash
+  if (hash && hash.includes('error=')) {
+    // Handle both standard hash format and Vue Router hash mode (#/)
+    let tokenHash = hash
+    if (hash.startsWith('#/')) {
+      tokenHash = hash.substring(1) // Remove the leading #
+    } else if (hash.startsWith('#')) {
+      tokenHash = hash.substring(1)
+    }
+    
+    const hashParams = new URLSearchParams(tokenHash)
+    const error = hashParams.get('error')
+    const errorCode = hashParams.get('error_code')
+    const errorDescription = hashParams.get('error_description')
+    
+    if (error || errorCode) {
+      console.log('[APP] Error in URL hash:', error, errorCode, errorDescription)
+      
+      // Decode the error description (URL encoded)
+      const decodedDescription = errorDescription ? decodeURIComponent(errorDescription.replace(/\+/g, ' ')) : ''
+      
+      // Store error for display in LoginView
+      const errorMessage = decodedDescription || error || errorCode || 'Unknown error'
+      sessionStorage.setItem('confirmation_error', errorMessage)
+      
+      // Store error type for resend logic
+      if (errorCode === 'otp_expired' || error === 'access_denied') {
+        sessionStorage.setItem('confirmation_error_type', 'expired')
+      }
+      
+      // Clear the hash after processing but keep the base path
+      window.history.replaceState(null, '', window.location.pathname)
+      return
+    }
+  }
+  
+  // Handle standard hash format and Vue Router hash mode (#/)
   let tokenHash = hash
   if (hash.startsWith('#/')) {
     tokenHash = hash.substring(1) // Remove the leading #
+  } else if (hash.startsWith('#')) {
+    tokenHash = hash.substring(1)
   }
   
   if (!tokenHash || !tokenHash.includes('access_token')) {
-    // Check for error in hash (e.g., expired confirmation link)
-    if (tokenHash && tokenHash.includes('error=')) {
-      const hashParams = new URLSearchParams(tokenHash)
-      const error = hashParams.get('error')
-      const errorDescription = hashParams.get('error_description')
-      
-      if (error) {
-        console.log('[APP] Error in URL hash:', error, errorDescription)
-        // Store error for display in LoginView
-        sessionStorage.setItem('confirmation_error', errorDescription || error)
-        // Clear the hash after processing
-        window.history.replaceState(null, '', window.location.pathname)
-      }
-    }
     return
   }
 

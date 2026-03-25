@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { supabase } from '../lib/supabase'
 import BaseInput from '../components/BaseInput.vue'
 import BaseButton from '../components/BaseButton.vue'
 
@@ -15,6 +16,11 @@ const formData = ref({
 })
 
 const errors = ref<Record<string, string>>({})
+const showResendConfirmation = ref(false)
+const resendEmail = ref('')
+const resendLoading = ref(false)
+const resendSuccess = ref(false)
+const resendError = ref('')
 
 // Check for unconfirmed email query parameter on mount
 onMounted(async () => {
@@ -41,10 +47,19 @@ onMounted(async () => {
   
   // Check for error from confirmation link (expired/invalid link)
   const confirmationError = sessionStorage.getItem('confirmation_error')
+  const confirmationErrorType = sessionStorage.getItem('confirmation_error_type')
+  
   if (confirmationError) {
-    errors.value.general = confirmationError
+    // Display user-friendly French error message
+    if (confirmationErrorType === 'expired' || confirmationError.includes('expired')) {
+      errors.value.general = 'Ce lien de confirmation a expiré. Veuillez demander un nouveau lien de confirmation.'
+      showResendConfirmation.value = true
+    } else {
+      errors.value.general = confirmationError
+    }
     // Clear the stored error
     sessionStorage.removeItem('confirmation_error')
+    sessionStorage.removeItem('confirmation_error_type')
   }
   
   if (route.query.unconfirmed === '1') {
@@ -85,6 +100,46 @@ async function handleSubmit() {
     errors.value.general = authStore.error || 'Erreur de connexion'
   }
 }
+
+async function handleResendConfirmation() {
+  resendError.value = ''
+  resendSuccess.value = false
+  
+  if (!resendEmail.value) {
+    resendError.value = 'L\'email est requis'
+    return
+  }
+  
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(resendEmail.value)) {
+    resendError.value = 'Format d\'email invalide'
+    return
+  }
+  
+  resendLoading.value = true
+  
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: resendEmail.value,
+    })
+    
+    if (error) {
+      console.error('[LoginView] Resend confirmation error:', error)
+      resendError.value = 'Erreur lors de l\'envoi du lien de confirmation. Veuillez réessayer.'
+    } else {
+      resendSuccess.value = true
+      showResendConfirmation.value = false
+      errors.value.general = 'Un nouveau lien de confirmation a été envoyé à votre adresse email.'
+    }
+  } catch (e) {
+    console.error('[LoginView] Resend confirmation exception:', e)
+    resendError.value = 'Une erreur inattendue est survenue. Veuillez réessayer.'
+  } finally {
+    resendLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -109,52 +164,90 @@ async function handleSubmit() {
             {{ errors.general }}
           </div>
 
-          <!-- Email -->
-          <BaseInput
-            v-model="formData.email"
-            label="Adresse email"
-            type="email"
-            placeholder="vous@exemple.com"
-            :error="errors.email"
-            required
-            autocomplete="email"
-          />
-
-          <!-- Password -->
-          <BaseInput
-            v-model="formData.password"
-            label="Mot de passe"
-            type="password"
-            placeholder="••••••••"
-            :error="errors.password"
-            required
-            autocomplete="current-password"
-          />
-
-          <!-- Submit -->
-          <div>
-            <BaseButton
-              type="submit"
-              variant="primary"
-              class="w-full"
-              :loading="authStore.loading"
-            >
-              Se connecter
-            </BaseButton>
-          </div>
-
-          <!-- Register Link -->
-          <div class="text-center">
+          <!-- Resend Confirmation Form -->
+          <div v-if="showResendConfirmation" class="space-y-4">
             <p class="text-sm text-gray-600">
-              Pas encore de compte ?
-              <router-link
-                :to="{ name: 'register', query: route.query }"
-                class="font-medium text-nuit-600 hover:text-nuit-500"
-              >
-                Créer un compte
-              </router-link>
+              Entrez votre adresse email pour recevoir un nouveau lien de confirmation.
             </p>
+            <BaseInput
+              v-model="resendEmail"
+              label="Adresse email"
+              type="email"
+              placeholder="vous@exemple.com"
+              :error="resendError"
+              required
+              autocomplete="email"
+            />
+            <div class="flex gap-3">
+              <BaseButton
+                type="button"
+                variant="primary"
+                class="flex-1"
+                :loading="resendLoading"
+                @click="handleResendConfirmation"
+              >
+                Envoyer le lien
+              </BaseButton>
+              <BaseButton
+                type="button"
+                variant="secondary"
+                class="flex-1"
+                @click="showResendConfirmation = false"
+              >
+                Annuler
+              </BaseButton>
+            </div>
           </div>
+
+          <!-- Regular Login Form -->
+          <template v-else>
+            <!-- Email -->
+            <BaseInput
+              v-model="formData.email"
+              label="Adresse email"
+              type="email"
+              placeholder="vous@exemple.com"
+              :error="errors.email"
+              required
+              autocomplete="email"
+            />
+
+            <!-- Password -->
+            <BaseInput
+              v-model="formData.password"
+              label="Mot de passe"
+              type="password"
+              placeholder="••••••••"
+              :error="errors.password"
+              required
+              autocomplete="current-password"
+            />
+
+            <!-- Submit -->
+            <div>
+              <BaseButton
+                type="submit"
+                variant="primary"
+                class="w-full"
+                :loading="authStore.loading"
+              >
+                Se connecter
+              </BaseButton>
+            </div>
+
+            <!-- Register Link -->
+            <div class="text-center">
+              <p class="text-sm text-gray-600">
+                Pas encore de compte ?
+                <router-link
+                  :to="{ name: 'register', query: route.query }"
+                  class="font-medium text-nuit-600 hover:text-nuit-500"
+                >
+                  Créer un compte
+                </router-link>
+              </p>
+            </div>
+          </template>
         </form>
       </div>
     </div>
