@@ -8,6 +8,11 @@ const EDGE_FUNCTION_URL = import.meta.env.VITE_SUPABASE_URL
   ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-journalist-application-notification`
   : null
 
+// Edge function URL for sending status notification emails
+const STATUS_NOTIFICATION_URL = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-journalist-status-notification`
+  : null
+
 export interface JournalistApplication {
   id: string
   user_id: string
@@ -356,6 +361,49 @@ export const useApplicationsStore = defineStore('applications', () => {
     error.value = null
   }
 
+  /**
+   * Send status notification email to applicant after approval/rejection
+   */
+  async function sendStatusNotification(application: JournalistApplication): Promise<boolean> {
+    if (!STATUS_NOTIFICATION_URL) {
+      console.log('[Applications] Status notification URL not configured, skipping email')
+      return false
+    }
+
+    try {
+      const response = await fetch(STATUS_NOTIFICATION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`
+        },
+        body: JSON.stringify({
+          id: application.id,
+          user_id: application.user_id,
+          full_name: application.full_name,
+          email: application.email,
+          phone: application.phone,
+          media_outlet: application.media_outlet,
+          status: application.status,
+          admin_notes: application.admin_notes
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('[Applications] Status notification error:', errorData)
+        return false
+      }
+
+      const result = await response.json()
+      console.log('[Applications] Status notification sent:', result)
+      return true
+    } catch (error) {
+      console.error('[Applications] Failed to send status notification:', error)
+      return false
+    }
+  }
+
   return {
     // State
     loading,
@@ -378,5 +426,6 @@ export const useApplicationsStore = defineStore('applications', () => {
     approveApplication,
     rejectApplication,
     clearApplication,
+    sendStatusNotification,
   }
 })

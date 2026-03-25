@@ -346,6 +346,16 @@ router.beforeEach(async (to, _from) => {
       // Non-journalist users trying to access journalist route should go to their dashboard
       return { name: 'user-dashboard' }
     }
+    // Check if journalist account is still pending approval
+    if (authStore.isPending) {
+      // Journalist account is pending - redirect to pending page
+      return { name: 'journalist-application-status' }
+    }
+    // Check if journalist account was rejected
+    if (authStore.isRejected) {
+      // Journalist account was rejected - redirect to application status page
+      return { name: 'journalist-application-status' }
+    }
     // Check email confirmation for journalist role
     const isConfirmed = await authStore.isEmailConfirmed()
     if (!isConfirmed) {

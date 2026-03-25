@@ -114,6 +114,12 @@ const approveApplication = async (applicationId: string) => {
   try {
     const success = await applicationsStore.approveApplication(applicationId)
     if (success) {
+      // Send status notification email to applicant
+      const app = applicationsStore.allApplications?.find(a => a.id === applicationId)
+      if (app) {
+        app.status = 'approved'
+        await applicationsStore.sendStatusNotification(app)
+      }
       await applicationsStore.getAllApplications()
       closeDetailModal()
     }
@@ -129,6 +135,13 @@ const rejectApplication = async () => {
   try {
     const success = await applicationsStore.rejectApplication(selectedApplication.value.id, rejectNotes.value)
     if (success) {
+      // Send status notification email to applicant
+      const app = applicationsStore.allApplications?.find(a => a.id === selectedApplication.value?.id)
+      if (app) {
+        app.status = 'rejected'
+        app.admin_notes = rejectNotes.value
+        await applicationsStore.sendStatusNotification(app)
+      }
       await applicationsStore.getAllApplications()
       closeRejectModal()
       closeDetailModal()
@@ -465,3 +478,4 @@ onMounted(async () => {
     </div>
   </div>
 </template>
+

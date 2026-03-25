@@ -45,8 +45,14 @@ onMounted(async () => {
   }
 })
 
+async function handleJournalistCheckboxChange() {
+  if (isJournalist.value) {
+    // Automatically redirect to journalist registration form
+    router.push('/journalistes/register')
+  }
+}
+
 async function handleSubmit() {
-  // Prevent rapid repeated submissions (debounce)
   const now = Date.now()
   if (now - lastSubmitTime < 3000) {
     console.log('[REGISTER] Debounce: preventing rapid submission')
@@ -64,31 +70,37 @@ async function handleSubmit() {
   // Validation
   if (!formData.value.email) {
     errors.value.email = 'L\'email est requis'
+    isSubmitting.value = false
     return
   }
   
   if (!formData.value.username) {
     errors.value.username = 'Le nom d\'utilisateur est requis'
+    isSubmitting.value = false
     return
   }
   
   if (!formData.value.password) {
     errors.value.password = 'Le mot de passe est requis'
+    isSubmitting.value = false
     return
   }
   
   if (formData.value.password.length < 6) {
     errors.value.password = 'Le mot de passe doit contenir au moins 6 caractères'
+    isSubmitting.value = false
     return
   }
   
   if (formData.value.password !== formData.value.confirmPassword) {
     errors.value.confirmPassword = 'Les mots de passe ne correspondent pas'
+    isSubmitting.value = false
     return
   }
   
   if (!acceptTerms.value) {
     errors.value.terms = 'Vous devez accepter les conditions d\'utilisation'
+    isSubmitting.value = false
     return
   }
 
@@ -228,6 +240,7 @@ async function handleSubmit() {
                   v-model="isJournalist"
                   type="checkbox"
                   class="h-4 w-4 text-nuit-600 border-gray-300 rounded focus:ring-nuit-500"
+                  @change="handleJournalistCheckboxChange"
                 />
               </div>
               <div class="ml-3 text-sm">
