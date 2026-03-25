@@ -109,8 +109,9 @@ function cancelDelete() {
 
 <template>
   <div
-    class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden border border-gray-100"
+    class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden border border-gray-100 cursor-pointer"
     :class="{ 'cursor-default': showDeleteConfirm }"
+    @click="$emit('click')"
   >
     <div class="p-5">
       <div class="flex items-start justify-between mb-3">
