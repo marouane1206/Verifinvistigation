@@ -141,7 +141,7 @@ async function handleResendConfirmation() {
       // Email not found in database - show error with options
       resendError.value = ''
       showResendConfirmation.value = false
-      errors.value.general = `Cette adresse email n'est pas enregistrée dans notre système. Vous pouvez <a href="/register?email=${encodeURIComponent(resendEmail.value)}" class="font-medium text-nuit-600 hover:text-nuit-500 underline">créer un compte</a> ou vérifier votre adresse email.`
+      errors.value.general = `Cette adresse email n'est pas enregistrée dans notre système. Veuillez créer un compte ou vérifier votre adresse email.`
       return
     }
     
@@ -211,7 +211,7 @@ async function handleResendConfirmation() {
             v-if="errors.general"
             class="bg-alerte-50 border border-alerte-200 text-alerte-700 px-4 py-3 rounded relative"
           >
-            <span v-html="errors.general"></span>
+            {{ errors.general }}
           </div>
 
           <!-- Resend Confirmation Form -->
