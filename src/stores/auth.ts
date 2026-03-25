@@ -415,6 +415,10 @@ export const useAuthStore = defineStore('auth', () => {
           error.value = 'Trop de demandes. Veuillez patienter quelques instants avant de réessayer.'
         } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
           error.value = 'Erreur de connexion. Veuillez vérifier votre connexion internet.'
+        } else if (authError.status === 500) {
+          // Handle 500 errors which often indicate SMTP configuration issues
+          error.value = 'Erreur serveur. Veuillez réessayer plus tard ou contacter le support.'
+          console.error('[AUTH] Server error (500):', authError.message)
         } else {
           // For any other errors, provide a French user-friendly message
           error.value = 'Une erreur est survenue lors de l\'inscription. Veuillez réessayer.'
