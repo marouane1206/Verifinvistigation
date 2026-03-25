@@ -487,7 +487,7 @@ onUnmounted(() => {
           <template v-if="!isAuthenticated">
             <router-link
               to="/register"
-              class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+              class="bg-bleu-500 hover:bg-bleu-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
             >
               Inscription
             </router-link>
@@ -834,7 +834,7 @@ onUnmounted(() => {
           <template v-if="!isAuthenticated">
             <router-link
               to="/register"
-              class="block w-full text-center text-nuit-100 hover:text-white px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
+              class="block w-full text-center bg-bleu-500 hover:bg-bleu-600 text-white px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
               @click="closeAllMenus"
             >
               Inscription
