@@ -45,7 +45,7 @@ const standardUserNavItems = computed<{ name: string; to?: string; dropdown?: Dr
         name: 'Signalements',
         items: [
           { name: 'Nouveau', to: '/signaler' },
-          { name: 'Mes signalements', to: '/users/dashboard' }
+          { name: 'Mes signalements', to: '/users/signalements' }
         ]
       }
     },
@@ -55,7 +55,7 @@ const standardUserNavItems = computed<{ name: string; to?: string; dropdown?: Dr
         name: 'Vérification',
         items: [
           { name: 'Nouvelle', to: '/verifier' },
-          { name: 'Mes vérifications', to: '/users/dashboard' }
+          { name: 'Mes vérifications', to: '/users/verifications' }
         ]
       }
     }

@@ -9,6 +9,8 @@ const RegisterView = () => import('../views/RegisterView.vue')
 const JournalistRegisterView = () => import('../views/JournalistRegisterView.vue')
 const DashboardView = () => import('../views/DashboardView.vue')
 const ReportFormView = () => import('../views/ReportFormView.vue')
+const UserSignalementsView = () => import('../views/UserSignalementsView.vue')
+const UserVerificationsView = () => import('../views/UserVerificationsView.vue')
 const JournalistDashboardView = () => import('../views/JournalistDashboardView.vue')
 const JournalistPendingView = () => import('../views/JournalistPendingView.vue')
 const JournalistVerifyView = () => import('../views/JournalistVerifyView.vue')
@@ -58,6 +60,18 @@ const routes = [
     path: '/users/dashboard',
     name: 'user-dashboard',
     component: DashboardView,
+    meta: { role: 'user' as RouteRole },
+  },
+  {
+    path: '/users/signalements',
+    name: 'user-signalements',
+    component: UserSignalementsView,
+    meta: { role: 'user' as RouteRole },
+  },
+  {
+    path: '/users/verifications',
+    name: 'user-verifications',
+    component: UserVerificationsView,
     meta: { role: 'user' as RouteRole },
   },
   {
