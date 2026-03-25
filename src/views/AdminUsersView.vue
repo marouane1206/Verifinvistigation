@@ -298,7 +298,11 @@ onMounted(() => {
               ← Retour au tableau de bord
             </BaseButton>
           </router-link>
-          <BaseButton variant="primary" @click="openCreateModal">
+          <BaseButton 
+            v-if="userContext !== 'journalist'" 
+            variant="primary" 
+            @click="openCreateModal"
+          >
             + Créer un utilisateur
           </BaseButton>
           <BaseButton 
