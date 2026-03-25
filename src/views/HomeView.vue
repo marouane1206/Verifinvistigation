@@ -1,10 +1,34 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import BaseButton from '../components/BaseButton.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+// Redirect authenticated users to their appropriate dashboard
+onMounted(async () => {
+  // Initialize auth if not done yet
+  try {
+    if (!authStore.user && !authStore.loading) {
+      await authStore.initialize()
+    }
+    
+    // After initialization, check if user is authenticated
+    if (authStore.isAuthenticated) {
+      // Redirect based on role
+      if (authStore.isJournalist) {
+        router.replace('/journalistes/dashboard')
+      } else {
+        router.replace('/users/dashboard')
+      }
+      return
+    }
+  } catch (error) {
+    console.error('[HomeView] Auth initialization failed:', error)
+  }
+})
 
 const stats = [
   { value: '1500+', label: 'Signalements traités' },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import BaseInput from '../components/BaseInput.vue'
@@ -23,6 +23,27 @@ const errors = ref<Record<string, string>>({})
 const isSubmitting = ref(false)
 const registrationSuccess = ref(false)
 let lastSubmitTime = 0
+
+// Redirect authenticated users on mount
+onMounted(async () => {
+  // Initialize auth if not done yet
+  try {
+    if (!authStore.user && !authStore.loading) {
+      await authStore.initialize()
+    }
+    
+    // Redirect authenticated users away from register page
+    if (authStore.isAuthenticated) {
+      if (authStore.isJournalist) {
+        router.replace('/journalistes/dashboard')
+      } else {
+        router.replace('/users/dashboard')
+      }
+    }
+  } catch (error) {
+    console.error('[RegisterView] Auth initialization failed:', error)
+  }
+})
 
 async function handleSubmit() {
   // Prevent rapid repeated submissions (debounce)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import BaseInput from '../components/BaseInput.vue'
@@ -16,6 +16,23 @@ const formData = ref({
 
 const errors = ref<Record<string, string>>({})
 const loading = ref(false)
+
+// Redirect authenticated admin users to admin dashboard
+onMounted(async () => {
+  // Initialize auth if not done yet
+  try {
+    if (!authStore.user && !authStore.loading) {
+      await authStore.initialize()
+    }
+    
+    // If already authenticated as admin, redirect to admin dashboard
+    if (authStore.isAuthenticated && authStore.isAdmin) {
+      router.replace('/admin')
+    }
+  } catch (error) {
+    console.error('[AdminLoginView] Auth initialization failed:', error)
+  }
+})
 
 async function handleSubmit() {
   errors.value = {}

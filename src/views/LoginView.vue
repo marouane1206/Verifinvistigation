@@ -17,7 +17,26 @@ const formData = ref({
 const errors = ref<Record<string, string>>({})
 
 // Check for unconfirmed email query parameter on mount
-onMounted(() => {
+onMounted(async () => {
+  // Initialize auth if not done yet
+  try {
+    if (!authStore.user && !authStore.loading) {
+      await authStore.initialize()
+    }
+    
+    // Redirect authenticated users away from login page
+    if (authStore.isAuthenticated) {
+      if (authStore.isJournalist) {
+        router.replace('/journalistes/dashboard')
+      } else {
+        router.replace('/users/dashboard')
+      }
+      return
+    }
+  } catch (error) {
+    console.error('[LoginView] Auth initialization failed:', error)
+  }
+  
   if (route.query.unconfirmed === '1') {
     errors.value.general = 'Veuillez confirmer votre email avant de accéder à cette page'
     // Clear the query parameter to avoid showing the message again on refresh

@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { storeToRefs } from 'pinia'
 
 // Import views (will be created later)
 const HomeView = () => import('../views/HomeView.vue')
@@ -247,9 +248,14 @@ const router = createRouter({
 // Navigation guards
 router.beforeEach(async (to, _from) => {
   const authStore = useAuthStore()
+  const { user, loading } = storeToRefs(authStore)
   
   // Initialize auth if not done yet
-  if (!authStore.user && !authStore.loading) {
+  // Use user.value directly to check if user is loaded (reactive ref)
+  // Also check loading.value to prevent race conditions
+  if (!user.value && !loading.value) {
+    // Only initialize if not already loading/initialized
+    // This prevents race conditions where multiple navigations try to initialize
     await authStore.initialize()
   }
 
