@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import TheNavbar from './components/TheNavbar.vue'
 import AdminNav from './components/AdminNav.vue'
 import TheFooter from './components/TheFooter.vue'
@@ -8,6 +8,7 @@ import { useAuthStore } from './stores/auth'
 import { supabase } from './lib/supabase'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
@@ -56,7 +57,7 @@ async function parseHashUrlTokens() {
   // Handle standard hash format and Vue Router hash mode (#/)
   let tokenHash = hash
   if (hash.startsWith('#/')) {
-    tokenHash = hash.substring(1) // Remove the leading #
+    tokenHash = hash.substring(2) // Remove the leading #/
   } else if (hash.startsWith('#')) {
     tokenHash = hash.substring(1)
   }
@@ -67,11 +68,12 @@ async function parseHashUrlTokens() {
 
   // Parse the parameters from the hash
   const hashParams = new URLSearchParams(tokenHash)
-  const accessToken = hashParams.get('access_token')
-  const refreshToken = hashParams.get('refresh_token')
-  const expiresIn = hashParams.get('expires_in')
-  const expiresAt = hashParams.get('expires_at')
-  const type = hashParams.get('type') // 'signup' or 'login'
+  // Handle both 'access_token' and '/access_token' keys (hash router may include leading slash)
+  const accessToken = hashParams.get('access_token') || hashParams.get('/access_token') || hashParams.get('%2Faccess_token')
+  const refreshToken = hashParams.get('refresh_token') || hashParams.get('/refresh_token') || ''
+  const expiresIn = hashParams.get('expires_in') || hashParams.get('/expires_in') || '3600'
+  const expiresAt = hashParams.get('expires_at') || hashParams.get('/expires_at')
+  const type = hashParams.get('type') || hashParams.get('/type') // 'signup' or 'login'
 
   if (accessToken) {
     console.log('[APP] Found tokens in URL hash, exchanging for session...')
@@ -94,12 +96,32 @@ async function parseHashUrlTokens() {
         sessionStorage.setItem('confirmation_error', error.message)
       } else {
         console.log('[APP] Session established from URL tokens')
+        
+        // Store session flag to track that we just established a session from URL
+        sessionStorage.setItem('just_confirmed', 'true')
+        
+        // Reinitialize auth store to get user profile
+        await authStore.initialize()
+        
+        // Determine redirect path based on user role
+        let redirectPath = '/users/dashboard'
+        if (authStore.isAdmin) {
+          redirectPath = '/admin'
+        } else if (authStore.isJournalist) {
+          redirectPath = '/journalistes/dashboard'
+        }
+        
+        // Clear the hash first, then navigate to the appropriate route
+        window.history.replaceState(null, '', '/')
+        
+        // Use setTimeout to allow the hash clear to complete
+        setTimeout(() => {
+          router.replace(redirectPath)
+        }, 50)
+        return
       }
-      // Clear the hash after successful token processing
-      // But preserve the base path for routing
+      // Clear the hash after processing
       window.history.replaceState(null, '', window.location.pathname)
-      // Reinitialize auth store
-      await authStore.initialize()
     } catch (e) {
       console.error('[APP] Exception setting session from hash tokens:', e)
     }
@@ -110,6 +132,29 @@ async function parseHashUrlTokens() {
 onMounted(async () => {
   // First, check for tokens in the hash URL
   await parseHashUrlTokens()
+  
+  // Check if user just confirmed their email (from sessionStorage flag)
+  const justConfirmed = sessionStorage.getItem('just_confirmed')
+  if (justConfirmed) {
+    sessionStorage.removeItem('just_confirmed')
+    
+    // Give auth store time to initialize and get the user
+    setTimeout(async () => {
+      if (!authStore.user) {
+        await authStore.initialize()
+      }
+      
+      // Redirect based on user role
+      if (authStore.isAdmin) {
+        router.replace({ name: 'admin-dashboard' })
+      } else if (authStore.isJournalist) {
+        router.replace('/journalistes/dashboard')
+      } else {
+        router.replace('/users/dashboard')
+      }
+    }, 100)
+    return
+  }
   
   // Then initialize auth if needed
   if (!authStore.user && !authStore.loading) {
