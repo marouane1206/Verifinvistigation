@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAdminStore, type AdminUser } from '../stores/admin'
 import { useAuthStore } from '../stores/auth'
 import BaseButton from '../components/BaseButton.vue'
 
+const route = useRoute()
 const adminStore = useAdminStore()
 const authStore = useAuthStore()
 
@@ -15,14 +17,52 @@ const showRoleModal = ref(false)
 const userToEdit = ref<AdminUser | null>(null)
 const newRole = ref<'user' | 'journalist' | 'admin'>('user')
 
-const filters = [
-  { value: 'all', label: 'Tous' },
-  { value: 'user', label: 'Utilisateurs' }
-]
+// Determine context based on route path
+const userContext = computed(() => {
+  const path = route.path
+  if (path.includes('/journalists')) {
+    return 'journalist'
+  }
+  return 'user'
+})
+
+// Page title based on context
+const pageTitle = computed(() => {
+  return userContext.value === 'journalist' 
+    ? 'Gestion des Journalistes' 
+    : 'Gestion des Utilisateurs'
+})
+
+// Description based on context
+const pageDescription = computed(() => {
+  return userContext.value === 'journalist'
+    ? 'Gérer les journalistes et leurs demandes d\'approbation'
+    : 'Gérer les utilisateurs, journalistes et administrateurs'
+})
+
+const filters = computed(() => {
+  if (userContext.value === 'journalist') {
+    return [
+      { value: 'all', label: 'Tous' },
+      { value: 'journalist', label: 'Journalistes' }
+    ]
+  }
+  return [
+    { value: 'all', label: 'Tous' },
+    { value: 'user', label: 'Utilisateurs' }
+  ]
+})
 
 const filteredUsers = computed(() => {
-  // Always exclude admin and journalist roles - show only regular users
-  let users = adminStore.users.filter(u => u.role !== 'admin' && u.role !== 'journalist')
+  let users
+  
+  if (userContext.value === 'journalist') {
+    // Show only journalist role when accessed via "Journalistes" menu
+    users = adminStore.users.filter(u => u.role === 'journalist')
+  } else {
+    // Show only regular users (exclude admin and journalist) when accessed via "Utilisateurs" menu
+    users = adminStore.users.filter(u => u.role !== 'admin' && u.role !== 'journalist')
+  }
   
   if (activeFilter.value !== 'all') {
     users = users.filter(u => u.role === activeFilter.value)
@@ -116,10 +156,10 @@ onMounted(() => {
       <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-gray-900">
-            Gestion des Utilisateurs
+            {{ pageTitle }}
           </h1>
           <p class="text-gray-600 mt-1">
-            Gérer les utilisateurs, journalistes et administrateurs
+            {{ pageDescription }}
           </p>
         </div>
         <div class="mt-4 md:mt-0">
