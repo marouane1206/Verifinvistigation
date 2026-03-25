@@ -257,7 +257,7 @@ const routes = [
 const router = createRouter({
   history: createWebHashHistory('/Verifinvistigation/'),
   routes,
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(_to, _from, _savedPosition) {
     // Always scroll to top on navigation
     return { top: 0 }
   },
