@@ -99,7 +99,6 @@ const adminNavItems = computed<NavSection[]>(() => {
         label: 'Menu Utilisateurs',
         items: [
           { name: 'Liste des utilisateurs', to: '/admin/users', icon: 'users' },
-          { name: 'Créer un utilisateur', to: '/admin/users/create', icon: 'user-plus' },
           { name: 'Médias', to: '/admin/users/media', icon: 'image' },
           { name: 'Rôles et permissions', to: '/admin/users/roles', icon: 'shield' },
           { name: 'Journal d\'activité', to: '/admin/users/activity', icon: 'activity' }

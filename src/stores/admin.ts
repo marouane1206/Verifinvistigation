@@ -93,6 +93,79 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  // Generate a random password for new users
+  function generatePassword(length: number = 12): string {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+    let password = ''
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length))
+    }
+    return password
+  }
+
+  async function createUser(email: string, username: string, role: 'user' | 'journalist' | 'admin' = 'user') {
+    loading.value = true
+    error.value = null
+    try {
+      // Generate a random password for the user
+      const tempPassword = generatePassword(12)
+
+      // Create user in auth.users via admin API
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password: tempPassword,
+        user_metadata: {
+          username,
+          role
+        }
+      })
+
+      if (authError) {
+        error.value = authError.message
+        return null
+      }
+
+      if (!authData.user) {
+        error.value = 'Erreur lors de la création de l\'utilisateur'
+        return null
+      }
+
+      // Wait for the trigger to complete profile creation (handles race condition)
+      await new Promise(resolve => setTimeout(resolve, 200))
+
+      // Update the profile with username and role (trigger already created the profile)
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          username, 
+          role,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', authData.user.id)
+        .select()
+        .single()
+
+      if (profileError) {
+        error.value = profileError.message
+        return null
+      }
+
+      // Add to local state
+      if (profileData) {
+        users.value.unshift(profileData)
+      }
+
+      return profileData
+    } catch (e) {
+      error.value = 'Erreur lors de la création de l\'utilisateur'
+      console.error('Error creating user:', e)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function updateUserRole(userId: string, newRole: 'user' | 'journalist' | 'admin') {
     loading.value = true
     error.value = null
@@ -622,6 +695,7 @@ export const useAdminStore = defineStore('admin', () => {
     admins,
     // User Actions
     fetchAllUsers,
+    createUser,
     updateUserRole,
     deleteUser,
     // Reports Actions

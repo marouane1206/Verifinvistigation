@@ -17,6 +17,13 @@ const showRoleModal = ref(false)
 const userToEdit = ref<AdminUser | null>(null)
 const newRole = ref<'user' | 'journalist' | 'admin'>('user')
 
+// Create user modal state
+const showCreateModal = ref(false)
+const newUserEmail = ref('')
+const newUserUsername = ref('')
+const newUserRole = ref<'user' | 'journalist' | 'admin'>('user')
+const isCreatingUser = ref(false)
+
 // Determine context based on route path
 const userContext = computed(() => {
   const path = route.path
@@ -144,6 +151,52 @@ const deleteUser = async () => {
   userToDelete.value = null
 }
 
+// Create user functions
+const openCreateModal = () => {
+  newUserEmail.value = ''
+  newUserUsername.value = ''
+  newUserRole.value = 'user'
+  adminStore.clearError()
+  showCreateModal.value = true
+}
+
+const createUser = async () => {
+  // Validate required fields
+  if (!newUserEmail.value.trim() || !newUserUsername.value.trim()) {
+    adminStore.error = 'Veuillez remplir tous les champs'
+    return
+  }
+  
+  // Validate email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newUserEmail.value.trim())) {
+    adminStore.error = 'Veuillez entrer une adresse email valide'
+    return
+  }
+  
+  // Validate username length
+  if (newUserUsername.value.trim().length < 3) {
+    adminStore.error = 'Le nom d\'utilisateur doit contenir au moins 3 caractères'
+    return
+  }
+  
+  // Validate username characters (alphanumeric and underscore only)
+  if (!/^[a-zA-Z0-9_]+$/.test(newUserUsername.value.trim())) {
+    adminStore.error = 'Le nom d\'utilisateur ne peut contenir que des lettres, chiffres et underscores'
+    return
+  }
+  
+  isCreatingUser.value = true
+  const result = await adminStore.createUser(newUserEmail.value.trim(), newUserUsername.value.trim(), newUserRole.value)
+  isCreatingUser.value = false
+  
+  if (result) {
+    showCreateModal.value = false
+    newUserEmail.value = ''
+    newUserUsername.value = ''
+    newUserRole.value = 'user'
+  }
+}
+
 onMounted(() => {
   adminStore.fetchAllUsers()
 })
@@ -162,12 +215,15 @@ onMounted(() => {
             {{ pageDescription }}
           </p>
         </div>
-        <div class="mt-4 md:mt-0">
+        <div class="mt-4 md:mt-0 flex gap-3">
           <router-link to="/admin">
             <BaseButton variant="outline">
               ← Retour au tableau de bord
             </BaseButton>
           </router-link>
+          <BaseButton variant="primary" @click="openCreateModal">
+            + Créer un utilisateur
+          </BaseButton>
         </div>
       </div>
 
@@ -347,6 +403,61 @@ onMounted(() => {
             </BaseButton>
             <BaseButton variant="primary" class="bg-alerte-600 hover:bg-alerte-700" @click="deleteUser">
               Supprimer
+            </BaseButton>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create User Modal -->
+      <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            Créer un nouvel utilisateur
+          </h3>
+          
+          <!-- Error Message -->
+          <div v-if="adminStore.error" class="bg-alerte-50 border border-alerte-200 rounded-lg p-3 mb-4">
+            <p class="text-alerte-700 text-sm">{{ adminStore.error }}</p>
+          </div>
+          
+          <div class="space-y-4 mb-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                v-model="newUserEmail"
+                type="email"
+                placeholder="email@exemple.com"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nom d'utilisateur</label>
+              <input
+                v-model="newUserUsername"
+                type="text"
+                placeholder="Nom d'utilisateur"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
+              <select
+                v-model="newUserRole"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              >
+                <option value="user">Utilisateur</option>
+                <option value="journalist">Journaliste</option>
+                <option value="admin">Administrateur</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="flex justify-end gap-3">
+            <BaseButton variant="outline" @click="showCreateModal = false" :disabled="isCreatingUser">
+              Annuler
+            </BaseButton>
+            <BaseButton variant="primary" @click="createUser" :disabled="isCreatingUser">
+              {{ isCreatingUser ? 'Création...' : 'Créer' }}
             </BaseButton>
           </div>
         </div>
