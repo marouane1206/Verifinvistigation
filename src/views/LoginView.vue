@@ -49,7 +49,12 @@ onMounted(async () => {
   const confirmationError = sessionStorage.getItem('confirmation_error')
   const confirmationErrorType = sessionStorage.getItem('confirmation_error_type')
   
-  if (confirmationError) {
+  // Check for success message (email already verified)
+  const confirmationMessage = sessionStorage.getItem('confirmation_message')
+  if (confirmationMessage) {
+    errors.value.general = confirmationMessage
+    sessionStorage.removeItem('confirmation_message')
+  } else if (confirmationError) {
     // Display user-friendly French error message
     if (confirmationErrorType === 'expired' || confirmationError.includes('expired')) {
       errors.value.general = 'Ce lien de confirmation a expiré. Veuillez demander un nouveau lien de confirmation.'
