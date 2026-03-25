@@ -3,6 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSiteUrl } from '../shared/constants.ts'
 
 interface ApplicationData {
   id: string
@@ -58,7 +59,7 @@ serve(async (req) => {
     }
 
     const approvalToken = tokenData
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://verifinvestigation.org'
+    const siteUrl = getSiteUrl()
     // Link directly to the edge function for one-click approval
     const approvalUrl = `${supabaseUrl}/functions/v1/approve-journalist-application?token=${approvalToken}`
     const adminDashboardUrl = `${siteUrl}/admin/journalist-applications`

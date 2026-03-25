@@ -61,7 +61,7 @@ When no custom SMTP is configured, Supabase uses its default built-in email serv
 
 1. In the same **Authentication > Providers > Email** page
 2. Find the **Site URL** field
-3. Set it to: `https://verifinvestigation.org`
+3. Set it to: `https://marouane1206.github.io/Verifinvistigation`
 
 ### Step 3: Verify Email Settings
 

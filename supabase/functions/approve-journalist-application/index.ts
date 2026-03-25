@@ -3,6 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSiteUrl } from '../shared/constants.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,7 +99,7 @@ serve(async (req) => {
       .eq('id', application.id)
       .single()
 
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://verifinvestigation.org'
+    const siteUrl = getSiteUrl()
     const dashboardUrl = `${siteUrl}/journalistes/dashboard`
 
     // Return success page

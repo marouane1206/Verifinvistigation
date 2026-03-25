@@ -2,6 +2,7 @@
 // This Edge Function sends temporary password emails to new users/journalists
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { getSiteUrl, getSupportEmail, getFromEmail } from '../shared/constants.ts'
 
 interface RequestBody {
   email: string
@@ -91,10 +92,9 @@ serve(async (req) => {
       )
     }
 
-    // Get environment variables
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://verifinvestigation.org'
-    const supportEmail = Deno.env.get('SUPPORT_EMAIL') || 'support@verifinvestigation.org'
-    const fromEmail = Deno.env.get('FROM_EMAIL') || 'noreply@verifinvestigation.org'
+    const siteUrl = getSiteUrl()
+    const supportEmail = getSupportEmail()
+    const fromEmail = getFromEmail()
     
     // Validate required environment variables in production
     if (!Deno.env.get('RESEND_API_KEY') && Deno.env.get('DENO_ENV') === 'production') {
