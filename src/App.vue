@@ -14,7 +14,12 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
 // Helper function for hash-based navigation
 function navigateWithHash(path: string) {
-  window.location.hash = path
+  // Clear the hash first to prevent Vue Router from processing the old hash
+  window.location.hash = ''
+  // Then navigate to the new path after a brief delay
+  setTimeout(() => {
+    window.location.hash = path
+  }, 10)
 }
 
 // Parse tokens from hash URL (for OAuth/email confirmation links)
@@ -29,7 +34,7 @@ async function parseHashUrlTokens() {
     // Handle both standard hash format and Vue Router hash mode (#/)
     let tokenHash = hash
     if (hash.startsWith('#/')) {
-      tokenHash = hash.substring(1)
+      tokenHash = hash.substring(2) // Remove the leading #/
     } else if (hash.startsWith('#')) {
       tokenHash = hash.substring(1)
     }
