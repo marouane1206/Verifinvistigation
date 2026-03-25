@@ -487,13 +487,13 @@ onUnmounted(() => {
           <template v-if="!isAuthenticated">
             <router-link
               to="/register"
-              class="bg-bleu-500 hover:bg-bleu-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+              class="bg-nuit-600 hover:bg-nuit-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
             >
               Inscription
             </router-link>
             <router-link
               to="/login"
-              class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+              class="border border-nuit-400 text-nuit-100 hover:text-white hover:border-nuit-600 hover:bg-nuit-600 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
             >
               Connexion
             </router-link>
@@ -834,14 +834,14 @@ onUnmounted(() => {
           <template v-if="!isAuthenticated">
             <router-link
               to="/register"
-              class="block w-full text-center bg-bleu-500 hover:bg-bleu-600 text-white px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
+              class="block w-full text-center bg-nuit-600 hover:bg-nuit-700 text-white px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
               @click="closeAllMenus"
             >
               Inscription
             </router-link>
             <router-link
               to="/login"
-              class="block w-full text-center text-nuit-100 hover:text-white px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
+              class="block w-full text-center border border-nuit-400 text-nuit-100 hover:text-white hover:border-nuit-600 hover:bg-nuit-600 px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
               @click="closeAllMenus"
             >
               Connexion
