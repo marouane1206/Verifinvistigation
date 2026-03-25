@@ -92,8 +92,20 @@ async function parseHashUrlTokens() {
       const { error } = await supabase.auth.setSession(tokenData)
       if (error) {
         console.error('[APP] Error setting session from hash tokens:', error)
-        // Store error for display
-        sessionStorage.setItem('confirmation_error', error.message)
+        
+        // Store error for display with French translation
+        let errorMessage = error.message
+        if (error.message.toLowerCase().includes('expired')) {
+          errorMessage = 'Ce lien de confirmation a expiré. Veuillez demander un nouveau lien de confirmation.'
+          sessionStorage.setItem('confirmation_error_type', 'expired')
+        } else if (error.message.toLowerCase().includes('invalid')) {
+          errorMessage = 'Ce lien de confirmation est invalide.'
+        }
+        sessionStorage.setItem('confirmation_error', errorMessage)
+        
+        // Clear the hash and redirect to login page
+        window.history.replaceState(null, '', '/')
+        router.replace('/login')
       } else {
         console.log('[APP] Session established from URL tokens')
         
@@ -120,10 +132,13 @@ async function parseHashUrlTokens() {
         }, 50)
         return
       }
-      // Clear the hash after processing
-      window.history.replaceState(null, '', window.location.pathname)
     } catch (e) {
       console.error('[APP] Exception setting session from hash tokens:', e)
+      // Store error for display
+      sessionStorage.setItem('confirmation_error', 'Une erreur inattendue est survenue')
+      // Clear the hash and redirect to login page
+      window.history.replaceState(null, '', '/')
+      router.replace('/login')
     }
   }
 }
