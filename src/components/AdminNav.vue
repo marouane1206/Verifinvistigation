@@ -114,9 +114,7 @@ const adminNavItems = computed<NavSection[]>(() => {
         items: [
           { name: 'Liste des journalistes', to: '/admin/journalists', icon: 'user-check' },
           { name: 'Demandes d\'approbation', to: '/admin/journalists/approvals', icon: 'user-plus', badge: pendingApplicationsCount.value },
-          { name: 'Médias', to: '/admin/journalists/media', icon: 'image' },
-          { name: 'Gestion des articles', to: '/admin/journalists/articles', icon: 'file-text' },
-          { name: 'Performance et stats', to: '/admin/journalists/performance', icon: 'bar-chart' }
+          { name: 'Médias', to: '/admin/journalists/media', icon: 'image' }
         ]
       }
     },

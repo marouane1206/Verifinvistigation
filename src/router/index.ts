@@ -225,18 +225,6 @@ const routes = [
     meta: { role: 'admin' as RouteRole },
   },
   {
-    path: '/admin/journalists/articles',
-    name: 'admin-journalists-articles',
-    component: AdminUsersView,
-    meta: { role: 'admin' as RouteRole },
-  },
-  {
-    path: '/admin/journalists/performance',
-    name: 'admin-journalists-performance',
-    component: AdminUsersView,
-    meta: { role: 'admin' as RouteRole },
-  },
-  {
     path: '/admin/reports',
     name: 'admin-reports',
     component: AdminReportsView,
