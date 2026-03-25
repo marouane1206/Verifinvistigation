@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore, type MediaFile } from '../stores/admin'
 import BaseButton from '../components/BaseButton.vue'
 
 const route = useRoute()
+const router = useRouter()
 const adminStore = useAdminStore()
 
 const searchQuery = ref('')
@@ -42,7 +43,9 @@ const filteredFiles = computed(() => {
   
   const query = searchQuery.value.toLowerCase()
   return adminStore.mediaFiles.filter(f => 
-    f.name.toLowerCase().includes(query)
+    f.name.toLowerCase().includes(query) ||
+    f.report_title?.toLowerCase().includes(query) ||
+    f.uploader_username?.toLowerCase().includes(query)
   )
 })
 
@@ -70,6 +73,38 @@ const formatDate = (date: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const getPostType = (type: string | null | undefined): string => {
+  if (type === 'signalement') return 'Signalement'
+  if (type === 'verification') return 'Vérification'
+  return '-'
+}
+
+const getPostTypeClass = (type: string | null | undefined): string => {
+  if (type === 'signalement') return 'bg-alerte-100 text-alerte-800'
+  if (type === 'verification') return 'bg-bleu-100 text-bleu-800'
+  return 'bg-gray-100 text-gray-800'
+}
+
+// Navigation functions
+const navigateToDocument = (file: MediaFile) => {
+  if (file.report_id) {
+    // Navigate to document management for the related report
+    router.push({ name: 'admin-reports', query: { documentId: file.id } })
+  }
+}
+
+const navigateToUser = (file: MediaFile) => {
+  if (file.uploaded_by) {
+    router.push({ name: 'admin-users', query: { userId: file.uploaded_by } })
+  }
+}
+
+const navigateToReport = (file: MediaFile) => {
+  if (file.report_id) {
+    router.push({ name: 'admin-reports', query: { reportId: file.report_id } })
+  }
 }
 
 const openPreview = async (file: MediaFile) => {
@@ -242,8 +277,21 @@ onMounted(() => {
             <p class="text-sm font-medium text-gray-900 truncate" :title="file.name">
               {{ file.name }}
             </p>
-            <p class="text-xs text-gray-500">
-              {{ getFileExtension(file.name) }}
+            <div class="flex items-center gap-2 mt-1">
+              <span 
+                :class="[
+                  'inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium',
+                  getPostTypeClass(file.report_type)
+                ]"
+              >
+                {{ getPostType(file.report_type) }}
+              </span>
+              <span class="text-xs text-gray-500">
+                {{ getFileExtension(file.name) }}
+              </span>
+            </div>
+            <p v-if="file.uploader_username" class="text-xs text-gray-500 mt-1">
+              {{ file.uploader_username }}
             </p>
           </div>
         </div>
@@ -272,6 +320,12 @@ onMounted(() => {
                 Type
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Utilisateur
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Titre du signalement
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Date d'upload
               </th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -282,17 +336,51 @@ onMounted(() => {
           <tbody class="divide-y divide-gray-200">
             <tr v-for="file in filteredFiles" :key="file.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl">
+                <div class="flex items-center cursor-pointer" @click="navigateToDocument(file)">
+                  <!-- Thumbnail for images -->
+                  <div v-if="file.content_type.startsWith('image/') && file.public_url" class="h-10 w-10 rounded-lg overflow-hidden shrink-0">
+                    <img :src="file.public_url" :alt="file.name" class="w-full h-full object-cover" />
+                  </div>
+                  <!-- Icon for non-image files -->
+                  <div v-else class="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl shrink-0">
                     {{ getFileIcon(file.content_type) }}
                   </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ file.name }}</div>
+                  <div class="ml-3">
+                    <div class="text-sm font-medium text-gray-900 truncate max-w-50" :title="file.name">{{ file.name }}</div>
+                    <div class="text-xs text-gray-500">{{ getFileExtension(file.name) }}</div>
                   </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-500">{{ file.content_type }}</div>
+                <span 
+                  :class="[
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                    getPostTypeClass(file.report_type)
+                  ]"
+                >
+                  {{ getPostType(file.report_type) }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <button 
+                  v-if="file.uploader_username && file.uploaded_by"
+                  @click="navigateToUser(file)"
+                  class="text-nuit-600 hover:text-nuit-800 font-medium text-sm"
+                >
+                  {{ file.uploader_username }}
+                </button>
+                <span v-else class="text-gray-500">-</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <button 
+                  v-if="file.report_id && file.report_title"
+                  @click="navigateToReport(file)"
+                  class="text-nuit-600 hover:text-nuit-800 font-medium text-sm truncate max-w-50 block"
+                  :title="file.report_title"
+                >
+                  {{ file.report_title }}
+                </button>
+                <span v-else class="text-gray-500">-</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-500">{{ formatDate(file.created_at) }}</div>

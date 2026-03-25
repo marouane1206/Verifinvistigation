@@ -44,6 +44,11 @@ export interface MediaFile {
   public_url?: string
   uploaded_by?: string
   uploader_role?: string
+  // Related data for enhanced columns
+  report_id?: string
+  report_type?: 'signalement' | 'verification'
+  report_title?: string
+  uploader_username?: string
 }
 
 export const useAdminStore = defineStore('admin', () => {
@@ -630,12 +635,13 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     try {
-      // Fetch from documents table with uploader profile info
+      // Fetch from documents table with uploader profile info and report info
       const { data: documents, error: docError } = await supabase
         .from('documents')
         .select(`
           *,
-          uploader:uploaded_by (role)
+          uploader:uploaded_by (id, username, role),
+          report:report_id (id, type, title)
         `)
         .order('created_at', { ascending: false })
 
@@ -662,7 +668,12 @@ export const useAdminStore = defineStore('admin', () => {
           created_at: doc.created_at,
           public_url: urlData?.publicUrl,
           uploaded_by: doc.uploaded_by,
-          uploader_role: uploaderRole
+          uploader_role: uploaderRole,
+          // Related data for enhanced columns
+          report_id: doc.report?.id || null,
+          report_type: doc.report?.type || null,
+          report_title: doc.report?.title || null,
+          uploader_username: doc.uploader?.username || null
         } as MediaFile
       }))
 
