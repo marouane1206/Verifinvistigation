@@ -13,25 +13,36 @@ const authStore = useAuthStore()
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
+// Helper function for hash-based navigation
+function navigateWithHash(path: string) {
+  window.location.hash = path
+}
+
 // Parse tokens from hash URL (for OAuth/email confirmation links)
 async function parseHashUrlTokens() {
   const hash = window.location.hash
+  console.log('[APP] Current hash:', hash)
   
   // Check for error in hash first (e.g., expired confirmation link)
-  // This must be checked BEFORE Vue Router processes the hash
   if (hash && hash.includes('error=')) {
+    console.log('[APP] Found error in hash')
+    
     // Handle both standard hash format and Vue Router hash mode (#/)
     let tokenHash = hash
     if (hash.startsWith('#/')) {
-      tokenHash = hash.substring(1) // Remove the leading #
+      tokenHash = hash.substring(1)
     } else if (hash.startsWith('#')) {
       tokenHash = hash.substring(1)
     }
+    
+    console.log('[APP] Parsing tokenHash:', tokenHash)
     
     const hashParams = new URLSearchParams(tokenHash)
     const error = hashParams.get('error')
     const errorCode = hashParams.get('error_code')
     const errorDescription = hashParams.get('error_description')
+    
+    console.log('[APP] Parsed error:', error, errorCode, errorDescription)
     
     if (error || errorCode) {
       console.log('[APP] Error in URL hash:', error, errorCode, errorDescription)
@@ -48,8 +59,8 @@ async function parseHashUrlTokens() {
         sessionStorage.setItem('confirmation_error_type', 'expired')
       }
       
-      // Clear the hash after processing but keep the base path
-      window.history.replaceState(null, '', window.location.pathname)
+      // Use hash-based navigation to go to login
+      navigateWithHash('/login')
       return
     }
   }
@@ -103,9 +114,8 @@ async function parseHashUrlTokens() {
         }
         sessionStorage.setItem('confirmation_error', errorMessage)
         
-        // Clear the hash and redirect to login page
-        window.history.replaceState(null, '', '/')
-        router.replace('/login')
+        // Use hash-based navigation to go to login
+        navigateWithHash('/login')
       } else {
         console.log('[APP] Session established from URL tokens')
         
@@ -116,29 +126,22 @@ async function parseHashUrlTokens() {
         await authStore.initialize()
         
         // Determine redirect path based on user role
-        let redirectPath = '/users/dashboard'
+        let redirectHash = '/users/dashboard'
         if (authStore.isAdmin) {
-          redirectPath = '/admin'
+          redirectHash = '/admin'
         } else if (authStore.isJournalist) {
-          redirectPath = '/journalistes/dashboard'
+          redirectHash = '/journalistes/dashboard'
         }
         
-        // Clear the hash first, then navigate to the appropriate route
-        window.history.replaceState(null, '', '/')
-        
-        // Use setTimeout to allow the hash clear to complete
-        setTimeout(() => {
-          router.replace(redirectPath)
-        }, 50)
-        return
+        // Clear the hash and navigate to the appropriate route
+        window.location.hash = redirectHash
       }
     } catch (e) {
       console.error('[APP] Exception setting session from hash tokens:', e)
       // Store error for display
       sessionStorage.setItem('confirmation_error', 'Une erreur inattendue est survenue')
-      // Clear the hash and redirect to login page
-      window.history.replaceState(null, '', '/')
-      router.replace('/login')
+      // Use hash-based navigation to go to login
+      navigateWithHash('/login')
     }
   }
 }
@@ -161,11 +164,11 @@ onMounted(async () => {
       
       // Redirect based on user role
       if (authStore.isAdmin) {
-        router.replace({ name: 'admin-dashboard' })
+        window.location.hash = '/admin'
       } else if (authStore.isJournalist) {
-        router.replace('/journalistes/dashboard')
+        window.location.hash = '/journalistes/dashboard'
       } else {
-        router.replace('/users/dashboard')
+        window.location.hash = '/users/dashboard'
       }
     }, 100)
     return
