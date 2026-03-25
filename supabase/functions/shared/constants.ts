@@ -6,7 +6,7 @@
  * Default fallback URL when SITE_URL environment variable is not set
  * Used as fallback in Edge Functions for email links and redirects
  */
-export const DEFAULT_SITE_URL = 'https://marouane1206.github.io/Verifinvistigation'
+export const DEFAULT_SITE_URL = 'https://verifinvestigation.org'
 
 /**
  * Get the site URL from environment or use default fallback

@@ -72,11 +72,23 @@ When no custom SMTP is configured, Supabase uses its default built-in email serv
    - **Username:** Your AWS SES SMTP username
    - **Password:** Your AWS SES SMTP password
 
+#### Option D: OVH
+
+1. Log in to your OVH account at https://www.ovh.com/manager
+2. Go to your email service and note your SMTP server details
+3. In Supabase, configure:
+   - **Host:** `ssl0.ovh.net` (or `smtp.ovh.net`)
+   - **Port:** `587` (or `465` for SSL)
+   - **Username:** Your full OVH email address (e.g., `your-email@yourdomain.com`)
+   - **Password:** Your email password
+   - **Sender Email:** Your OVH email address
+   - **Sender Name:** `Verifinvestigation`
+
 ### Step 2: Verify Site URL
 
 In the same **Authentication > Providers > Email** page, ensure:
 
-- **Site URL:** `https://marouane1206.github.io/Verifinvistigation`
+- **Site URL:** `https://verifinvestigation.org`
 - **Redirect URLs:** Add your production URL
 
 ### Step 3: Enable Email Confirmations
