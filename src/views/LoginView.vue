@@ -24,9 +24,11 @@ onMounted(async () => {
       await authStore.initialize()
     }
     
-    // Redirect authenticated users away from login page
+    // Redirect authenticated users away from login page - priority: admin > journalist > user
     if (authStore.isAuthenticated) {
-      if (authStore.isJournalist) {
+      if (authStore.isAdmin) {
+        router.replace({ name: 'admin-dashboard' })
+      } else if (authStore.isJournalist) {
         router.replace('/journalistes/dashboard')
       } else {
         router.replace('/users/dashboard')
@@ -60,14 +62,12 @@ async function handleSubmit() {
   const success = await authStore.login(formData.value.email, formData.value.password)
   
   if (success) {
-    // Check if user has journalist role and redirect accordingly
-    console.log('[Login] Login success, checking role for redirect...')
-    console.log('[Login] user:', authStore.user)
-    console.log('[Login] isJournalist:', authStore.isJournalist)
-    
+    // Check if user has admin role and redirect accordingly
     const redirect = route.query.redirect as string
     if (redirect) {
       router.push(redirect)
+    } else if (authStore.isAdmin) {
+      router.push({ name: 'admin-dashboard' })
     } else if (authStore.isJournalist) {
       router.push('/journalistes/dashboard')
     } else {

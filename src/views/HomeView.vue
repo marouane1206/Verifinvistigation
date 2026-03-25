@@ -17,8 +17,10 @@ onMounted(async () => {
     
     // After initialization, check if user is authenticated
     if (authStore.isAuthenticated) {
-      // Redirect based on role
-      if (authStore.isJournalist) {
+      // Redirect based on role - priority: admin > journalist > user
+      if (authStore.isAdmin) {
+        router.replace({ name: 'admin-dashboard' })
+      } else if (authStore.isJournalist) {
         router.replace('/journalistes/dashboard')
       } else {
         router.replace('/users/dashboard')

@@ -287,6 +287,17 @@ router.beforeEach(async (to, _from) => {
   const requiredRole = to.meta.role as RouteRole
 
   if (requiredRole === 'public') {
+    // If user is authenticated and tries to access public routes, redirect to appropriate dashboard
+    if (authStore.isAuthenticated) {
+      // Priority: admin > journalist > user
+      if (authStore.isAdmin) {
+        return { name: 'admin-dashboard' }
+      } else if (authStore.isJournalist) {
+        return { name: 'journalist-dashboard' }
+      } else {
+        return { name: 'user-dashboard' }
+      }
+    }
     return true
   }
 
