@@ -211,7 +211,7 @@ async function handleResendConfirmation() {
             v-if="errors.general"
             class="bg-alerte-50 border border-alerte-200 text-alerte-700 px-4 py-3 rounded relative"
           >
-            {{ errors.general }}
+            <span v-html="errors.general"></span>
           </div>
 
           <!-- Resend Confirmation Form -->
