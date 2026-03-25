@@ -120,6 +120,43 @@ async function handleResendConfirmation() {
   resendLoading.value = true
   
   try {
+    // Check if the email exists in the database (profiles table)
+    // Note: We need RLS policies to allow this check
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, status')
+      .eq('email', resendEmail.value)
+      .maybeSingle()
+    
+    if (profileError) {
+      console.error('[LoginView] Profile lookup error:', profileError)
+    }
+    
+    if (!profileData) {
+      // Email not found in database - show error with options
+      resendError.value = ''
+      showResendConfirmation.value = false
+      errors.value.general = `Cette adresse email n'est pas enregistrée dans notre système. Vous pouvez <a href="/register?email=${encodeURIComponent(resendEmail.value)}" class="font-medium text-nuit-600 hover:text-nuit-500 underline">créer un compte</a> ou vérifier votre adresse email.`
+      return
+    }
+    
+    // Email exists - check if account is active
+    if (profileData.status === 'rejected') {
+      resendError.value = ''
+      showResendConfirmation.value = false
+      errors.value.general = 'Votre compte a été rejeté. Veuillez contacter le support pour plus d\'informations.'
+      return
+    }
+    
+    if (profileData.status === 'active') {
+      // Account is already active - prompt to login
+      resendError.value = ''
+      showResendConfirmation.value = false
+      errors.value.general = 'Ce compte est déjà actif. Veuillez vous connecter avec votre mot de passe.'
+      return
+    }
+    
+    // Email exists but status is 'pending' - try to resend confirmation
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: resendEmail.value,
@@ -127,7 +164,15 @@ async function handleResendConfirmation() {
     
     if (error) {
       console.error('[LoginView] Resend confirmation error:', error)
-      resendError.value = 'Erreur lors de l\'envoi du lien de confirmation. Veuillez réessayer.'
+      
+      // Check for specific error messages
+      if (error.message.includes('rate limit') || error.message.includes('too many')) {
+        resendError.value = 'Trop de demandes. Veuillez patienter quelques instants avant de réessayer.'
+      } else if (error.message.includes('Email rate limit exceeded')) {
+        resendError.value = 'Trop de demandes pour cet email. Veuillez patienter avant de réessayer.'
+      } else {
+        resendError.value = 'Erreur lors de l\'envoi du lien de confirmation. Veuillez réessayer.'
+      }
     } else {
       resendSuccess.value = true
       showResendConfirmation.value = false

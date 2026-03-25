@@ -129,6 +129,9 @@ async function parseHashUrlTokens() {
         // Reinitialize auth store to get user profile
         await authStore.initialize()
         
+        // Give a small delay to ensure everything is synced
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
         // Determine redirect path based on user role
         let redirectHash = '/users/dashboard'
         if (authStore.isAdmin) {
@@ -137,8 +140,12 @@ async function parseHashUrlTokens() {
           redirectHash = '/journalistes/dashboard'
         }
         
-        // Clear the hash and navigate to the appropriate route
-        window.location.hash = redirectHash
+        // Clear the hash first to prevent issues
+        window.location.hash = ''
+        // Use setTimeout to allow hash to clear, then navigate to the appropriate route
+        setTimeout(() => {
+          window.location.hash = redirectHash
+        }, 50)
       }
     } catch (e) {
       console.error('[APP] Exception setting session from hash tokens:', e)
@@ -165,6 +172,9 @@ onMounted(async () => {
       if (!authStore.user) {
         await authStore.initialize()
       }
+      
+      // Give a small delay to ensure routing is ready
+      await new Promise(resolve => setTimeout(resolve, 50))
       
       // Redirect based on user role
       if (authStore.isAdmin) {
