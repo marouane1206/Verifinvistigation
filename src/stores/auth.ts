@@ -7,6 +7,7 @@ export interface User {
   email: string
   username: string
   role: 'user' | 'journalist' | 'admin'
+  status: 'active' | 'pending' | 'rejected'
   created_at: string
 }
 
@@ -20,6 +21,11 @@ export const useAuthStore = defineStore('auth', () => {
   const isJournalist = computed(() => user.value?.role === 'journalist')
   const isAdmin = computed(() => user.value?.role === 'admin')
   const isStandardUser = computed(() => user.value?.role === 'user')
+  
+  // Status checking
+  const isPending = computed(() => user.value?.status === 'pending')
+  const isRejected = computed(() => user.value?.status === 'rejected')
+  const isActive = computed(() => user.value?.status === 'active')
   
   // Check if user's email is confirmed
   async function isEmailConfirmed(): Promise<boolean> {
@@ -122,11 +128,14 @@ export const useAuthStore = defineStore('auth', () => {
         if (newData) {
           // Ensure role has a valid value - fallback to 'user' if null/undefined
           const createdRole = newData.role || 'user'
+          // Ensure status has a valid value - fallback to 'active' if null/undefined
+          const createdStatus = newData.status || 'active'
           user.value = {
             id: newData.id,
             email: newData.email || email,
             username: newData.username,
             role: createdRole,
+            status: createdStatus,
             created_at: newData.created_at,
           }
         }
@@ -138,6 +147,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (data) {
       // Ensure role has a valid value - fallback to 'user' if null/undefined
       const finalRole = data.role || 'user'
+      // Ensure status has a valid value - fallback to 'active' if null/undefined
+      const finalStatus = data.status || 'active'
       
       user.value = {
         id: data.id,
@@ -145,9 +156,39 @@ export const useAuthStore = defineStore('auth', () => {
         email: data.email || authData?.user?.email || '',
         username: data.username,
         role: finalRole,
+        status: finalStatus,
         created_at: data.created_at,
       }
     }
+  }
+
+  // Check user status from profile
+  async function checkUserStatus(): Promise<'active' | 'pending' | 'rejected' | null> {
+    if (!user.value) return null
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('profiles')
+        .select('status')
+        .eq('id', user.value.id)
+        .single()
+      
+      if (fetchError) {
+        console.error('[AUTH] Error checking user status:', fetchError)
+        return null
+      }
+      
+      return (data.status as 'active' | 'pending' | 'rejected') || 'active'
+    } catch (e) {
+      console.error('[AUTH] Error checking user status:', e)
+      return null
+    }
+  }
+
+  // Check if user can access journalist features
+  function canAccessJournalistFeatures(): boolean {
+    if (!user.value) return false
+    return user.value.role === 'journalist' && user.value.status === 'active'
   }
 
   async function login(email: string, password: string) {
@@ -298,6 +339,7 @@ export const useAuthStore = defineStore('auth', () => {
           email: data.user.email!,
           username,
           role: userRole,
+          status: profileData?.status || (isJournalist ? 'pending' : 'active'),
           created_at: new Date().toISOString(),
         }
         return true
@@ -397,6 +439,9 @@ export const useAuthStore = defineStore('auth', () => {
     isJournalist,
     isAdmin,
     isStandardUser,
+    isPending,
+    isRejected,
+    isActive,
     initialize,
     login,
     register,
@@ -404,5 +449,7 @@ export const useAuthStore = defineStore('auth', () => {
     updateUsername,
     deleteAccount,
     isEmailConfirmed,
+    checkUserStatus,
+    canAccessJournalistFeatures,
   }
 })

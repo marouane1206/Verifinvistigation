@@ -216,6 +216,17 @@ async function handleSubmit() {
                 <p class="text-gray-500 mt-1">
                   Cochez cette case si vous êtes journaliste professionnel. Cela vous accordera un accès au tableau de bord journalist et la possibilité de mener des enquêtes.
                 </p>
+                <div class="mt-3 pt-3 border-t border-nuit-200">
+                  <router-link
+                    to="/journalistes/register"
+                    class="text-nuit-600 hover:text-nuit-500 font-medium text-sm"
+                  >
+                    → Formulaire d'inscription détaillé pour journalistes
+                  </router-link>
+                  <p class="text-gray-500 text-xs mt-1">
+                    Si vous souhaitez постuler avec un dossier complet (portefeuille, spécialisation, références), utilisez le formulaire dédié.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

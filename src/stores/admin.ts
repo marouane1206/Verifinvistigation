@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { supabase } from '../lib/supabase'
 import type { Report, ReportStatus } from './reports'
 import type { Investigation } from './investigations'
+import type { JournalistApplication } from './applications'
 
 export interface AdminUser {
   id: string
@@ -44,6 +45,7 @@ export const useAdminStore = defineStore('admin', () => {
   const reports = ref<Report[]>([])
   const investigations = ref<Investigation[]>([])
   const mediaFiles = ref<MediaFile[]>([])
+  const applications = ref<JournalistApplication[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
   const stats = ref<AdminStats>({
@@ -62,6 +64,8 @@ export const useAdminStore = defineStore('admin', () => {
   const regularUsers = computed(() => users.value.filter(u => u.role === 'user'))
   const journalists = computed(() => users.value.filter(u => u.role === 'journalist'))
   const admins = computed(() => users.value.filter(u => u.role === 'admin'))
+  const pendingApplications = computed(() => applications.value.filter(a => a.status === 'pending'))
+  const pendingApplicationsCount = computed(() => pendingApplications.value.length)
 
   // User Management Actions
   async function fetchAllUsers() {
@@ -548,6 +552,57 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  // Journalist Applications Actions
+  async function fetchAllApplications(status?: 'pending' | 'approved' | 'rejected') {
+    loading.value = true
+    error.value = null
+    try {
+      let query = supabase
+        .from('journalist_applications')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (status) {
+        query = query.eq('status', status)
+      }
+
+      const { data, error: fetchError } = await query
+
+      if (fetchError) {
+        error.value = fetchError.message
+        return []
+      }
+
+      applications.value = data || []
+      return data || []
+    } catch (e) {
+      error.value = 'Erreur lors de la récupération des demandes'
+      console.error('Error fetching applications:', e)
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function getPendingApplicationsCount(): Promise<number> {
+    try {
+      const { count, error: countError } = await supabase
+        .from('journalist_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+
+      if (countError) {
+        console.error('Error getting pending count:', countError)
+        return 0
+      }
+
+      return count || 0
+    } catch (e) {
+      console.error('Error getting pending count:', e)
+      return 0
+    }
+  }
+
   function clearError() {
     error.value = null
   }
@@ -583,6 +638,12 @@ export const useAdminStore = defineStore('admin', () => {
     deleteMediaFile,
     // Stats
     fetchStats,
-    clearError
+    clearError,
+    // Applications
+    applications,
+    pendingApplications,
+    pendingApplicationsCount,
+    fetchAllApplications,
+    getPendingApplicationsCount
   }
 })

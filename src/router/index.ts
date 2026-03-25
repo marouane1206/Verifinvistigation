@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 const HomeView = () => import('../views/HomeView.vue')
 const LoginView = () => import('../views/LoginView.vue')
 const RegisterView = () => import('../views/RegisterView.vue')
+const JournalistRegisterView = () => import('../views/JournalistRegisterView.vue')
 const DashboardView = () => import('../views/DashboardView.vue')
 const ReportFormView = () => import('../views/ReportFormView.vue')
 const JournalistDashboardView = () => import('../views/JournalistDashboardView.vue')
@@ -20,6 +21,10 @@ const AdminReportsView = () => import('../views/AdminReportsView.vue')
 const AdminInvestigationsView = () => import('../views/AdminInvestigationsView.vue')
 const AdminMediaView = () => import('../views/AdminMediaView.vue')
 const AdminLoginView = () => import('../views/AdminLoginView.vue')
+const AdminJournalistApplicationsView = () => import('../views/AdminJournalistApplicationsView.vue')
+
+// Journalist application status view
+const JournalistApplicationStatusView = () => import('../views/JournalistApplicationStatusView.vue')
 
 export type RouteRole = 'public' | 'auth' | 'user' | 'journalist' | 'admin'
 
@@ -43,6 +48,12 @@ const routes = [
     meta: { role: 'public' as RouteRole },
   },
   {
+    path: '/journalistes/register',
+    name: 'journalist-register',
+    component: JournalistRegisterView,
+    meta: { role: 'public' as RouteRole },
+  },
+  {
     path: '/users/dashboard',
     name: 'user-dashboard',
     component: DashboardView,
@@ -53,6 +64,19 @@ const routes = [
     name: 'journalist-dashboard',
     component: JournalistDashboardView,
     meta: { role: 'journalist' as RouteRole },
+  },
+  {
+    path: '/journalistes/application-status',
+    name: 'journalist-application-status',
+    component: JournalistApplicationStatusView,
+    meta: { role: 'auth' as RouteRole },
+  },
+  // Public route for one-click approval from email
+  {
+    path: '/approve-journalist',
+    name: 'approve-journalist',
+    component: JournalistApplicationStatusView,
+    meta: { role: 'public' as RouteRole },
   },
   {
     path: '/signaler/:type?',
@@ -197,7 +221,7 @@ const routes = [
   {
     path: '/admin/journalists/approvals',
     name: 'admin-journalists-approvals',
-    component: AdminUsersView,
+    component: AdminJournalistApplicationsView,
     meta: { role: 'admin' as RouteRole },
   },
   {

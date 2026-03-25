@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useAdminStore } from '../stores/admin'
 
 // ============================================================================
 // TypeScript Interfaces
@@ -53,6 +54,14 @@ export interface NavSection {
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
+
+// Pending applications count
+const pendingApplicationsCount = ref(0)
+
+const fetchPendingCount = async () => {
+  pendingApplicationsCount.value = await adminStore.getPendingApplicationsCount()
+}
 
 // ============================================================================
 // State
@@ -104,7 +113,7 @@ const adminNavItems = computed<NavSection[]>(() => {
         label: 'Menu Journalistes',
         items: [
           { name: 'Liste des journalistes', to: '/admin/journalists', icon: 'user-check' },
-          { name: 'Demandes d\'approbation', to: '/admin/journalists/approvals', icon: 'user-plus', badge: 0 },
+          { name: 'Demandes d\'approbation', to: '/admin/journalists/approvals', icon: 'user-plus', badge: pendingApplicationsCount.value },
           { name: 'Médias', to: '/admin/journalists/media', icon: 'image' },
           { name: 'Gestion des articles', to: '/admin/journalists/articles', icon: 'file-text' },
           { name: 'Performance et stats', to: '/admin/journalists/performance', icon: 'bar-chart' }
@@ -227,15 +236,24 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-// Watch route changes to close mobile menu
-watch(() => route.path, () => {
+// Handle route changes - close mobile menu and refresh badge when needed
+function handleRouteChange(newPath: string) {
   closeMobileMenu()
-})
+  // Refresh pending count when navigating to approvals page
+  if (newPath.includes('approvals')) {
+    fetchPendingCount()
+  }
+}
+
+// Watch route changes to close mobile menu and refresh badge
+watch(() => route.path, handleRouteChange)
 
 // Lifecycle hooks
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('keydown', handleKeydown)
+  // Fetch pending applications count
+  fetchPendingCount()
 })
 
 onUnmounted(() => {
@@ -426,7 +444,7 @@ onUnmounted(() => {
                       {{ item.name }}
                       <!-- Badge -->
                       <span 
-                        v-if="item.badge !== undefined"
+                        v-if="item.badge !== undefined && Number(item.badge) > 0"
                         class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full"
                       >
                         {{ item.badge }}
@@ -687,7 +705,7 @@ onUnmounted(() => {
                     <div class="flex items-center">
                       {{ item.name }}
                       <span 
-                        v-if="item.badge !== undefined"
+                        v-if="item.badge !== undefined && Number(item.badge) > 0"
                         class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full"
                       >
                         {{ item.badge }}
