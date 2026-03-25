@@ -30,6 +30,38 @@ const user = computed(() => authStore.user)
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isJournalist = computed(() => authStore.isJournalist)
 
+// Standard user navigation configuration (non-journalist authenticated users)
+const standardUserNavItems = computed<{ name: string; to?: string; dropdown?: DropdownMenu }[]>(() => {
+  if (isJournalist.value || !isAuthenticated.value) return []
+  
+  return [
+    {
+      name: 'Tableau de bord',
+      to: '/users/dashboard'
+    },
+    {
+      name: 'Signalements',
+      dropdown: {
+        name: 'Signalements',
+        items: [
+          { name: 'Nouveau', to: '/signaler' },
+          { name: 'Mes signalements', to: '/users/dashboard' }
+        ]
+      }
+    },
+    {
+      name: 'Vérification',
+      dropdown: {
+        name: 'Vérification',
+        items: [
+          { name: 'Nouvelle', to: '/verifier' },
+          { name: 'Mes vérifications', to: '/users/dashboard' }
+        ]
+      }
+    }
+  ]
+})
+
 // Journalist navigation configuration
 const journalistNavItems = computed<{ name: string; to?: string; dropdown?: DropdownMenu }[]>(() => {
   if (!isJournalist.value) return []
@@ -50,12 +82,12 @@ const journalistNavItems = computed<{ name: string; to?: string; dropdown?: Drop
       }
     },
     {
-      name: 'Verification',
+      name: 'Vérification',
       dropdown: {
-        name: 'Verification',
+        name: 'Vérification',
         items: [
           { name: 'En attente', to: '/journaliste/verify/pending' },
-          { name: 'Verifier', to: '/journaliste/verify/verify' }
+          { name: 'Vérifier', to: '/journaliste/verify/verify' }
         ]
       }
     }
@@ -190,8 +222,137 @@ onUnmounted(() => {
           </router-link>
         </div>
 
-        <!-- Desktop Navigation - Journalist Only -->
+        <!-- Desktop Navigation -->
         <div class="hidden md:flex items-center space-x-1">
+          <!-- Standard User Navigation -->
+          <template v-if="isAuthenticated && !isJournalist">
+            <!-- Tableau de bord - Direct link -->
+            <router-link
+              v-for="item in standardUserNavItems.filter(i => !i.dropdown)"
+              :key="item.name"
+              :to="item.to!"
+              class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+              :class="{ 'bg-nuit-600 text-white': isActiveRoute(item.to!) }"
+              :aria-current="isActiveRoute(item.to!) ? 'page' : undefined"
+              @click="closeAllMenus"
+            >
+              {{ item.name }}
+            </router-link>
+
+            <!-- Signalements Dropdown for Standard Users -->
+            <div class="relative dropdown-container">
+              <button
+                @click.stop="toggleSignalementsDropdown"
+                @keydown.enter.stop="toggleSignalementsDropdown"
+                @keydown.escape="isSignalementsDropdownOpen = false"
+                class="flex items-center text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                :class="{ 
+                  'bg-nuit-600 text-white': isSignalementsDropdownOpen || isDropdownItemActive(standardUserNavItems.find(i => i.name === 'Signalements')?.dropdown!) 
+                }"
+                :aria-expanded="isSignalementsDropdownOpen"
+                aria-haspopup="true"
+                aria-label="Menu Signalements"
+              >
+                Signalements
+                <svg 
+                  class="h-4 w-4 ml-1 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isSignalementsDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <transition
+                enter-active-class="transition ease-out duration-100"
+                enter-from-class="transform opacity-0 scale-95"
+                enter-to-class="transform opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-75"
+                leave-from-class="transform opacity-100 scale-100"
+                leave-to-class="transform opacity-0 scale-95"
+              >
+                <div 
+                  v-if="isSignalementsDropdownOpen" 
+                  class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                  role="menu"
+                  aria-label="Sous-menu Signalements"
+                >
+                  <router-link
+                    v-for="item in standardUserNavItems.find(i => i.name === 'Signalements')?.dropdown?.items"
+                    :key="item.name"
+                    :to="item.to"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    :class="{ 'bg-blue-50 text-blue-600': isActiveRoute(item.to) }"
+                    role="menuitem"
+                    @click="closeAllMenus"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                </div>
+              </transition>
+            </div>
+
+            <!-- Vérification Dropdown for Standard Users -->
+            <div class="relative dropdown-container">
+              <button
+                @click.stop="toggleVerificationDropdown"
+                @keydown.enter.stop="toggleVerificationDropdown"
+                @keydown.escape="isVerificationDropdownOpen = false"
+                class="flex items-center text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                :class="{ 
+                  'bg-nuit-600 text-white': isVerificationDropdownOpen || isDropdownItemActive(standardUserNavItems.find(i => i.name === 'Vérification')?.dropdown!) 
+                }"
+                :aria-expanded="isVerificationDropdownOpen"
+                aria-haspopup="true"
+                aria-label="Menu Vérification"
+              >
+                Vérification
+                <svg 
+                  class="h-4 w-4 ml-1 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isVerificationDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <transition
+                enter-active-class="transition ease-out duration-100"
+                enter-from-class="transform opacity-0 scale-95"
+                enter-to-class="transform opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-75"
+                leave-from-class="transform opacity-100 scale-100"
+                leave-to-class="transform opacity-0 scale-95"
+              >
+                <div 
+                  v-if="isVerificationDropdownOpen" 
+                  class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+                  role="menu"
+                  aria-label="Sous-menu Vérification"
+                >
+                  <router-link
+                    v-for="item in standardUserNavItems.find(i => i.name === 'Vérification')?.dropdown?.items"
+                    :key="item.name"
+                    :to="item.to"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    :class="{ 'bg-blue-50 text-blue-600': isActiveRoute(item.to) }"
+                    role="menuitem"
+                    @click="closeAllMenus"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                </div>
+              </transition>
+            </div>
+          </template>
+
+          <!-- Journalist Navigation -->
           <template v-if="isJournalist">
             <!-- Tableau de bord - Direct link -->
             <router-link
@@ -274,9 +435,9 @@ onUnmounted(() => {
                 }"
                 :aria-expanded="isVerificationDropdownOpen"
                 aria-haspopup="true"
-                aria-label="Menu Verification"
+                aria-label="Menu Vérification"
               >
-                Verification
+                Vérification
                 <svg 
                   class="h-4 w-4 ml-1 transition-transform duration-200" 
                   :class="{ 'rotate-180': isVerificationDropdownOpen }" 
@@ -301,7 +462,7 @@ onUnmounted(() => {
                   v-if="isVerificationDropdownOpen" 
                   class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
                   role="menu"
-                  aria-label="Sous-menu Verification"
+                  aria-label="Sous-menu Vérification"
                 >
                   <router-link
                     v-for="item in journalistNavItems.find(i => i.name === 'Verification')?.dropdown?.items"
@@ -322,8 +483,14 @@ onUnmounted(() => {
 
         <!-- Desktop Auth Section -->
         <div class="hidden md:flex items-center space-x-3">
-          <!-- Not authenticated - Show Login -->
+          <!-- Not authenticated - Show Login and Register -->
           <template v-if="!isAuthenticated">
+            <router-link
+              to="/register"
+              class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+            >
+              Inscription
+            </router-link>
             <router-link
               to="/login"
               class="text-nuit-100 hover:text-white hover:bg-nuit-600 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
@@ -381,7 +548,7 @@ onUnmounted(() => {
                   <!-- User Info -->
                   <div class="px-4 py-3 border-b border-gray-100">
                     <p class="text-sm font-medium text-gray-900 truncate">{{ user?.username }}</p>
-                    <p class="text-xs text-gray-500 capitalize">Journaliste</p>
+                    <p class="text-xs text-gray-500 capitalize">{{ user?.role === 'admin' ? 'Administrateur' : user?.role === 'journalist' ? 'Journaliste' : 'Utilisateur' }}</p>
                   </div>
 
                   <!-- Menu Items -->
@@ -451,6 +618,112 @@ onUnmounted(() => {
         aria-label="Menu mobile"
       >
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+          <!-- Standard User Mobile Navigation -->
+          <template v-if="isAuthenticated && !isJournalist">
+            <!-- Mobile Direct Links -->
+            <router-link
+              v-for="item in standardUserNavItems.filter(i => !i.dropdown)"
+              :key="item.name"
+              :to="item.to!"
+              class="text-nuit-100 hover:text-white hover:bg-nuit-600 block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+              :class="{ 'bg-nuit-600 text-white': isActiveRoute(item.to!) }"
+              :aria-current="isActiveRoute(item.to!) ? 'page' : undefined"
+              role="menuitem"
+              @click="closeAllMenus"
+            >
+              {{ item.name }}
+            </router-link>
+
+            <!-- Mobile Signalements Dropdown -->
+            <div class="border-t border-nuit-600 pt-3 mt-3">
+              <button
+                @click.stop="toggleSignalementsDropdown"
+                class="flex items-center justify-between w-full text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+                :class="{ 'bg-nuit-600 text-white': isSignalementsDropdownOpen || isDropdownItemActive(standardUserNavItems.find(i => i.name === 'Signalements')?.dropdown!) }"
+                :aria-expanded="isSignalementsDropdownOpen"
+                aria-haspopup="true"
+              >
+                <span>Signalements</span>
+                <svg 
+                  class="h-4 w-4 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isSignalementsDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 max-h-0"
+                enter-to-class="opacity-100 max-h-40"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 max-h-40"
+                leave-to-class="opacity-0 max-h-0"
+              >
+                <div v-if="isSignalementsDropdownOpen" class="mt-1 overflow-hidden">
+                  <router-link
+                    v-for="item in standardUserNavItems.find(i => i.name === 'Signalements')?.dropdown?.items"
+                    :key="item.name"
+                    :to="item.to"
+                    class="block pl-6 pr-3 py-2 text-nuit-200 hover:text-white hover:bg-nuit-600 rounded-md text-base font-medium transition-colors duration-200"
+                    :class="{ 'bg-nuit-600 text-white': isActiveRoute(item.to) }"
+                    @click="closeAllMenus"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                </div>
+              </transition>
+            </div>
+
+            <!-- Mobile Vérification Dropdown -->
+            <div class="border-t border-nuit-600 pt-3 mt-3">
+              <button
+                @click.stop="toggleVerificationDropdown"
+                class="flex items-center justify-between w-full text-nuit-100 hover:text-white hover:bg-nuit-600 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+                :class="{ 'bg-nuit-600 text-white': isVerificationDropdownOpen || isDropdownItemActive(standardUserNavItems.find(i => i.name === 'Vérification')?.dropdown!) }"
+                :aria-expanded="isVerificationDropdownOpen"
+                aria-haspopup="true"
+              >
+                <span>Vérification</span>
+                <svg 
+                  class="h-4 w-4 transition-transform duration-200" 
+                  :class="{ 'rotate-180': isVerificationDropdownOpen }" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 max-h-0"
+                enter-to-class="opacity-100 max-h-40"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 max-h-40"
+                leave-to-class="opacity-0 max-h-0"
+              >
+                <div v-if="isVerificationDropdownOpen" class="mt-1 overflow-hidden">
+                  <router-link
+                    v-for="item in standardUserNavItems.find(i => i.name === 'Vérification')?.dropdown?.items"
+                    :key="item.name"
+                    :to="item.to"
+                    class="block pl-6 pr-3 py-2 text-nuit-200 hover:text-white hover:bg-nuit-600 rounded-md text-base font-medium transition-colors duration-200"
+                    :class="{ 'bg-nuit-600 text-white': isActiveRoute(item.to) }"
+                    @click="closeAllMenus"
+                  >
+                    {{ item.name }}
+                  </router-link>
+                </div>
+              </transition>
+            </div>
+          </template>
+
+          <!-- Journalist Mobile Navigation -->
           <template v-if="isJournalist">
             <!-- Mobile Direct Links -->
             <router-link
@@ -519,7 +792,7 @@ onUnmounted(() => {
                 :aria-expanded="isVerificationDropdownOpen"
                 aria-haspopup="true"
               >
-                <span>Verification</span>
+                <span>Vérification</span>
                 <svg 
                   class="h-4 w-4 transition-transform duration-200" 
                   :class="{ 'rotate-180': isVerificationDropdownOpen }" 
@@ -560,6 +833,13 @@ onUnmounted(() => {
         <div class="pt-4 pb-4 border-t border-nuit-600 px-4 space-y-3">
           <template v-if="!isAuthenticated">
             <router-link
+              to="/register"
+              class="block w-full text-center text-nuit-100 hover:text-white px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
+              @click="closeAllMenus"
+            >
+              Inscription
+            </router-link>
+            <router-link
               to="/login"
               class="block w-full text-center text-nuit-100 hover:text-white px-4 py-2 rounded-md text-base font-medium transition-colors duration-200"
               @click="closeAllMenus"
@@ -578,7 +858,7 @@ onUnmounted(() => {
               </div>
               <div class="flex-1">
                 <p class="text-nuit-100 text-sm font-medium">{{ user?.username || user?.email?.split('@')[0] }}</p>
-                <p class="text-nuit-200 text-xs">Journaliste</p>
+                <p class="text-nuit-200 text-xs">{{ user?.role === 'admin' ? 'Administrateur' : user?.role === 'journalist' ? 'Journaliste' : 'Utilisateur' }}</p>
               </div>
             </div>
 
