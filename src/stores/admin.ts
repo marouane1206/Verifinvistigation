@@ -12,6 +12,13 @@ export interface AdminUser {
   role: 'user' | 'journalist' | 'admin'
   created_at: string
   updated_at: string
+  // Extended journalist fields (optional)
+  phone?: string
+  media_outlet?: string
+  journalist_id_number?: string
+  years_experience?: number
+  specialization?: string
+  portfolio_url?: string
 }
 
 export interface AdminStats {
@@ -93,21 +100,24 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Generate a random password for new users
+  // Generate a cryptographically secure random password
   function generatePassword(length: number = 12): string {
     const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+    const randomValues = new Uint32Array(length)
+    crypto.getRandomValues(randomValues)
     let password = ''
     for (let i = 0; i < length; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length))
+      password += charset.charAt(randomValues[i] % charset.length)
     }
     return password
   }
 
+  // Create user with optional role assignment
   async function createUser(email: string, username: string, role: 'user' | 'journalist' | 'admin' = 'user') {
     loading.value = true
     error.value = null
     try {
-      // Generate a random password for the user
+      // Generate a cryptographically secure password for the user
       const tempPassword = generatePassword(12)
 
       // Create user in auth.users via admin API
@@ -131,24 +141,51 @@ export const useAdminStore = defineStore('admin', () => {
         return null
       }
 
-      // Wait for the trigger to complete profile creation (handles race condition)
-      await new Promise(resolve => setTimeout(resolve, 200))
-
-      // Update the profile with username and role (trigger already created the profile)
-      const { data: profileData, error: profileError } = await supabase
+      // Check if profile already exists (created by trigger), if not create it
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .update({ 
-          username, 
-          role,
-          updated_at: new Date().toISOString() 
-        })
+        .select('id')
         .eq('id', authData.user.id)
-        .select()
         .single()
 
-      if (profileError) {
-        error.value = profileError.message
-        return null
+      let profileData
+      if (existingProfile) {
+        // Profile exists, update it
+        const { data: updatedProfile, error: profileError } = await supabase
+          .from('profiles')
+          .update({ 
+            username, 
+            role,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', authData.user.id)
+          .select()
+          .single()
+
+        if (profileError) {
+          error.value = profileError.message
+          return null
+        }
+        profileData = updatedProfile
+      } else {
+        // No profile exists, create one directly
+        const { data: insertedProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email,
+            username,
+            role,
+            status: 'active'
+          })
+          .select()
+          .single()
+
+        if (profileError) {
+          error.value = profileError.message
+          return null
+        }
+        profileData = insertedProfile
       }
 
       // Add to local state
@@ -160,6 +197,131 @@ export const useAdminStore = defineStore('admin', () => {
     } catch (e) {
       error.value = 'Erreur lors de la création de l\'utilisateur'
       console.error('Error creating user:', e)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Create journalist with extended information
+  async function createJournalist(
+    email: string,
+    username: string,
+    phone?: string,
+    mediaOutlet?: string,
+    journalistIdNumber?: string,
+    yearsExperience?: number,
+    specialization?: string,
+    portfolioUrl?: string
+  ) {
+    loading.value = true
+    error.value = null
+    let authUserId: string | null = null
+    try {
+      // Generate a cryptographically secure password for the user
+      const tempPassword = generatePassword(12)
+
+      // Create user in auth.users via admin API
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password: tempPassword,
+        user_metadata: {
+          username,
+          role: 'journalist',
+          is_journalist: true
+        }
+      })
+
+      if (authError) {
+        error.value = authError.message
+        return null
+      }
+
+      if (!authData.user) {
+        error.value = 'Erreur lors de la création du journaliste'
+        return null
+      }
+
+      authUserId = authData.user.id
+
+      // Check if profile already exists (created by trigger), if not create it
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', authUserId)
+        .single()
+
+      let profileData
+      if (existingProfile) {
+        // Profile exists, update it with journalist information
+        const updateData: Record<string, unknown> = {
+          username,
+          role: 'journalist',
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        }
+
+        // Add optional fields if provided
+        if (phone) updateData.phone = phone
+        if (mediaOutlet) updateData.media_outlet = mediaOutlet
+        if (journalistIdNumber) updateData.journalist_id_number = journalistIdNumber
+        if (yearsExperience) updateData.years_experience = yearsExperience
+        if (specialization) updateData.specialization = specialization
+        if (portfolioUrl) updateData.portfolio_url = portfolioUrl
+
+        const { data: updatedProfile, error: profileError } = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', authUserId)
+          .select()
+          .single()
+
+        if (profileError) {
+          error.value = profileError.message
+          return null
+        }
+        profileData = updatedProfile
+      } else {
+        // No profile exists, create one directly
+        const insertData = {
+          id: authUserId,
+          email,
+          username,
+          role: 'journalist',
+          status: 'pending'
+        }
+
+        // Add optional fields if provided
+        if (phone) (insertData as Record<string, unknown>).phone = phone
+        if (mediaOutlet) (insertData as Record<string, unknown>).media_outlet = mediaOutlet
+        if (journalistIdNumber) (insertData as Record<string, unknown>).journalist_id_number = journalistIdNumber
+        if (yearsExperience) (insertData as Record<string, unknown>).years_experience = yearsExperience
+        if (specialization) (insertData as Record<string, unknown>).specialization = specialization
+        if (portfolioUrl) (insertData as Record<string, unknown>).portfolio_url = portfolioUrl
+
+        const { data: insertedProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert(insertData)
+          .select()
+          .single()
+
+        if (profileError) {
+          error.value = profileError.message
+          return null
+        }
+        profileData = insertedProfile
+      }
+
+      // Add to local state
+      if (profileData) {
+        users.value.unshift(profileData)
+      }
+
+      return profileData
+    } catch (e) {
+      error.value = 'Erreur lors de la création du journaliste'
+      console.error('Error creating journalist:', e)
       return null
     } finally {
       loading.value = false
@@ -696,6 +858,7 @@ export const useAdminStore = defineStore('admin', () => {
     // User Actions
     fetchAllUsers,
     createUser,
+    createJournalist,
     updateUserRole,
     deleteUser,
     // Reports Actions

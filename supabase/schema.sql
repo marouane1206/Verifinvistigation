@@ -22,6 +22,13 @@ CREATE TABLE public.profiles (
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'journalist', 'admin')),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'rejected')),
     username TEXT UNIQUE NOT NULL,
+    -- Extended journalist fields
+    phone TEXT,
+    media_outlet TEXT,
+    journalist_id_number TEXT,
+    years_experience INTEGER,
+    specialization TEXT,
+    portfolio_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

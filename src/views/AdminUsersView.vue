@@ -24,6 +24,18 @@ const newUserUsername = ref('')
 const newUserRole = ref<'user' | 'journalist' | 'admin'>('user')
 const isCreatingUser = ref(false)
 
+// Create journalist modal state
+const showCreateJournalistModal = ref(false)
+const journalistEmail = ref('')
+const journalistUsername = ref('')
+const journalistPhone = ref('')
+const journalistMediaOutlet = ref('')
+const journalistIdNumber = ref('')
+const journalistYearsExperience = ref<number | undefined>(undefined)
+const journalistSpecialization = ref('')
+const journalistPortfolioUrl = ref('')
+const isCreatingJournalist = ref(false)
+
 // Determine context based on route path
 const userContext = computed(() => {
   const path = route.path
@@ -197,6 +209,71 @@ const createUser = async () => {
   }
 }
 
+// Create journalist functions
+const openCreateJournalistModal = () => {
+  journalistEmail.value = ''
+  journalistUsername.value = ''
+  journalistPhone.value = ''
+  journalistMediaOutlet.value = ''
+  journalistIdNumber.value = ''
+  journalistYearsExperience.value = undefined
+  journalistSpecialization.value = ''
+  journalistPortfolioUrl.value = ''
+  adminStore.clearError()
+  showCreateJournalistModal.value = true
+}
+
+const createJournalist = async () => {
+  // Validate required fields
+  if (!journalistEmail.value.trim() || !journalistUsername.value.trim()) {
+    adminStore.error = 'Veuillez remplir tous les champs obligatoires'
+    return
+  }
+  
+  // Validate email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(journalistEmail.value.trim())) {
+    adminStore.error = 'Veuillez entrer une adresse email valide'
+    return
+  }
+  
+  // Validate username length
+  if (journalistUsername.value.trim().length < 3) {
+    adminStore.error = 'Le nom d\'utilisateur doit contenir au moins 3 caractères'
+    return
+  }
+  
+  // Validate username characters (alphanumeric and underscore only)
+  if (!/^[a-zA-Z0-9_]+$/.test(journalistUsername.value.trim())) {
+    adminStore.error = 'Le nom d\'utilisateur ne peut contenir que des lettres, chiffres et underscores'
+    return
+  }
+  
+  isCreatingJournalist.value = true
+  const result = await adminStore.createJournalist(
+    journalistEmail.value.trim(),
+    journalistUsername.value.trim(),
+    journalistPhone.value.trim() || undefined,
+    journalistMediaOutlet.value.trim() || undefined,
+    journalistIdNumber.value.trim() || undefined,
+    journalistYearsExperience.value,
+    journalistSpecialization.value.trim() || undefined,
+    journalistPortfolioUrl.value.trim() || undefined
+  )
+  isCreatingJournalist.value = false
+  
+  if (result) {
+    showCreateJournalistModal.value = false
+    journalistEmail.value = ''
+    journalistUsername.value = ''
+    journalistPhone.value = ''
+    journalistMediaOutlet.value = ''
+    journalistIdNumber.value = ''
+    journalistYearsExperience.value = undefined
+    journalistSpecialization.value = ''
+    journalistPortfolioUrl.value = ''
+  }
+}
+
 onMounted(() => {
   adminStore.fetchAllUsers()
 })
@@ -223,6 +300,14 @@ onMounted(() => {
           </router-link>
           <BaseButton variant="primary" @click="openCreateModal">
             + Créer un utilisateur
+          </BaseButton>
+          <BaseButton 
+            v-if="userContext === 'journalist'" 
+            variant="primary" 
+            class="bg-bleu-600 hover:bg-bleu-700"
+            @click="openCreateJournalistModal"
+          >
+            + Ajouter un journaliste
           </BaseButton>
         </div>
       </div>
@@ -458,6 +543,138 @@ onMounted(() => {
             </BaseButton>
             <BaseButton variant="primary" @click="createUser" :disabled="isCreatingUser">
               {{ isCreatingUser ? 'Création...' : 'Créer' }}
+            </BaseButton>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create Journalist Modal -->
+      <div v-if="showCreateJournalistModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            Ajouter un nouveau journaliste
+          </h3>
+          <p class="text-sm text-gray-500 mb-4">
+            Le journaliste sera créé avec le statut "en attente" et devra être approuvé via les demandes d'approbation.
+          </p>
+          
+          <!-- Error Message -->
+          <div v-if="adminStore.error" class="bg-alerte-50 border border-alerte-200 rounded-lg p-3 mb-4">
+            <p class="text-alerte-700 text-sm">{{ adminStore.error }}</p>
+          </div>
+          
+          <div class="space-y-4 mb-6">
+            <!-- Required Fields -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Email <span class="text-alerte-600">*</span>
+              </label>
+              <input
+                v-model="journalistEmail"
+                type="email"
+                placeholder="email@exemple.com"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Nom d'utilisateur <span class="text-alerte-600">*</span>
+              </label>
+              <input
+                v-model="journalistUsername"
+                type="text"
+                placeholder="Nom d'utilisateur"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+            
+            <!-- Optional Fields -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Téléphone
+              </label>
+              <input
+                v-model="journalistPhone"
+                type="tel"
+                placeholder="+33 6 12 34 56 78"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Média / Organisme
+              </label>
+              <input
+                v-model="journalistMediaOutlet"
+                type="text"
+                placeholder="Nom du média ou organisme"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Numéro de carte de presse
+              </label>
+              <input
+                v-model="journalistIdNumber"
+                type="text"
+                placeholder="Numéro de carte professionnelle"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Années d'expérience
+              </label>
+              <input
+                v-model.number="journalistYearsExperience"
+                type="number"
+                min="0"
+                placeholder="Nombre d'années"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Spécialisation / Beat
+              </label>
+              <select
+                v-model="journalistSpecialization"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              >
+                <option value="">Sélectionner une spécialisation</option>
+                <option value="politique">Politique</option>
+                <option value="economie">Économie / Finance</option>
+                <option value="societe">Société</option>
+                <option value="culture">Culture</option>
+                <option value="sport">Sport</option>
+                <option value="science">Science / Technologie</option>
+                <option value="environnement">Environnement</option>
+                <option value="sante">Santé</option>
+                <option value="international">International</option>
+                <option value="justice">Justice</option>
+                <option value="autres">Autres</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Portfolio / URL
+              </label>
+              <input
+                v-model="journalistPortfolioUrl"
+                type="url"
+                placeholder="https://"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nuit-500 focus:border-nuit-500"
+              />
+            </div>
+          </div>
+          
+          <div class="flex justify-end gap-3">
+            <BaseButton variant="outline" @click="showCreateJournalistModal = false" :disabled="isCreatingJournalist">
+              Annuler
+            </BaseButton>
+            <BaseButton variant="primary" class="bg-bleu-600 hover:bg-bleu-700" @click="createJournalist" :disabled="isCreatingJournalist">
+              {{ isCreatingJournalist ? 'Création...' : 'Créer le journaliste' }}
             </BaseButton>
           </div>
         </div>
