@@ -64,7 +64,6 @@ export const useApplicationsStore = defineStore('applications', () => {
    */
   async function sendEmailNotification(application: JournalistApplication): Promise<boolean> {
     if (!EDGE_FUNCTION_URL) {
-      console.log('[Applications] Edge function URL not configured, skipping email notification')
       return false
     }
 
@@ -93,16 +92,11 @@ export const useApplicationsStore = defineStore('applications', () => {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('[Applications] Email notification error:', errorData)
         return false
       }
 
-      const result = await response.json()
-      console.log('[Applications] Email notification sent:', result)
       return true
     } catch (error) {
-      console.error('[Applications] Failed to send email notification:', error)
       return false
     }
   }
@@ -142,7 +136,6 @@ export const useApplicationsStore = defineStore('applications', () => {
         .single()
 
       if (insertError) {
-        console.error('[Applications] Insert error:', insertError)
         error.value = 'Erreur lors de la soumission de la demande'
         return false
       }
@@ -151,15 +144,11 @@ export const useApplicationsStore = defineStore('applications', () => {
       
       // Send email notification to admin
       if (applicationData && EDGE_FUNCTION_URL) {
-        const emailSent = await sendEmailNotification(applicationData)
-        if (!emailSent) {
-          console.warn('[Applications] Email notification failed - admin may not receive application alert')
-        }
+        await sendEmailNotification(applicationData)
       }
       
       return true
     } catch (e: any) {
-      console.error('[Applications] Unexpected error:', e)
       error.value = 'Une erreur inattendue est survenue'
       return false
     } finally {
@@ -196,7 +185,6 @@ export const useApplicationsStore = defineStore('applications', () => {
           currentApplication.value = null
           return null
         }
-        console.error('[Applications] Fetch error:', fetchError)
         error.value = 'Erreur lors de la récupération de la demande'
         return null
       }
@@ -204,7 +192,6 @@ export const useApplicationsStore = defineStore('applications', () => {
       currentApplication.value = data
       return data
     } catch (e: any) {
-      console.error('[Applications] Unexpected error:', e)
       error.value = 'Une erreur inattendue est survenue'
       return null
     } finally {
@@ -269,7 +256,6 @@ export const useApplicationsStore = defineStore('applications', () => {
       const { data, error: fetchError } = await query
 
       if (fetchError) {
-        console.error('[Applications] Fetch all error:', fetchError)
         error.value = 'Erreur lors de la récupération des demandes'
         return []
       }
@@ -277,7 +263,6 @@ export const useApplicationsStore = defineStore('applications', () => {
       allApplications.value = data || []
       return data || []
     } catch (e: any) {
-      console.error('[Applications] Unexpected error:', e)
       error.value = 'Une erreur inattendue est survenue'
       return []
     } finally {
@@ -293,67 +278,23 @@ export const useApplicationsStore = defineStore('applications', () => {
     error.value = null
 
     try {
-      console.log('[Applications] Approving application:', applicationId)
-      
       const { error: approveError } = await supabase.rpc('approve_journalist_application', {
         p_application_id: applicationId,
         p_admin_notes: adminNotes || null,
       })
 
       if (approveError) {
-        console.error('[Applications] Approve error:', approveError)
         error.value = 'Erreur lors de l\'approbation de la demande'
         return false
       }
-
-      console.log('[Applications] Application approved successfully, fetching updated application...')
 
       // Refresh current application if it's the one being approved
       if (currentApplication.value?.id === applicationId) {
         await getMyApplication()
       }
 
-      // Get the application to find the user_id
-      const app = allApplications.value?.find(a => a.id === applicationId)
-      if (app?.user_id) {
-        console.log('[Applications] Checking profile for user:', app.user_id)
-        
-        // Wait a moment for the DB to fully commit
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Verify the profile was updated correctly
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('role, status')
-          .eq('id', app.user_id)
-          .single()
-        
-        if (profileError) {
-          console.error('[Applications] Error fetching profile after approval:', profileError)
-        } else {
-          console.log('[Applications] Profile after approval:', profileData)
-          if (profileData?.role !== 'journalist') {
-            console.error('[Applications] BUG: Profile role is not journalist! Got:', profileData?.role)
-            
-            // Try to fix the role directly if it's wrong
-            console.log('[Applications] Attempting to fix role...')
-            const { error: fixError } = await supabase
-              .from('profiles')
-              .update({ role: 'journalist', status: 'active' })
-              .eq('id', app.user_id)
-            
-            if (fixError) {
-              console.error('[Applications] Failed to fix role:', fixError)
-            } else {
-              console.log('[Applications] Role fixed successfully!')
-            }
-          }
-        }
-      }
-
       return true
     } catch (e: any) {
-      console.error('[Applications] Unexpected error:', e)
       error.value = 'Une erreur inattendue est survenue'
       return false
     } finally {
@@ -375,7 +316,6 @@ export const useApplicationsStore = defineStore('applications', () => {
       })
 
       if (rejectError) {
-        console.error('[Applications] Reject error:', rejectError)
         error.value = 'Erreur lors du rejet de la demande'
         return false
       }
@@ -387,7 +327,6 @@ export const useApplicationsStore = defineStore('applications', () => {
 
       return true
     } catch (e: any) {
-      console.error('[Applications] Unexpected error:', e)
       error.value = 'Une erreur inattendue est survenue'
       return false
     } finally {
@@ -408,7 +347,6 @@ export const useApplicationsStore = defineStore('applications', () => {
    */
   async function sendStatusNotification(application: JournalistApplication): Promise<boolean> {
     if (!STATUS_NOTIFICATION_URL) {
-      console.log('[Applications] Status notification URL not configured, skipping email')
       return false
     }
 
@@ -432,16 +370,11 @@ export const useApplicationsStore = defineStore('applications', () => {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('[Applications] Status notification error:', errorData)
         return false
       }
 
-      const result = await response.json()
-      console.log('[Applications] Status notification sent:', result)
       return true
     } catch (error) {
-      console.error('[Applications] Failed to send status notification:', error)
       return false
     }
   }

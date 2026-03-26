@@ -25,12 +25,9 @@ function navigateWithHash(path: string) {
 // Parse tokens from hash URL (for OAuth/email confirmation links)
 async function parseHashUrlTokens() {
   const hash = window.location.hash
-  console.log('[APP] Current hash:', hash)
   
   // Check for error in hash first (e.g., expired confirmation link)
   if (hash && hash.includes('error=')) {
-    console.log('[APP] Found error in hash')
-    
     // Handle both standard hash format and Vue Router hash mode (#/)
     let tokenHash = hash
     if (hash.startsWith('#/')) {
@@ -39,18 +36,12 @@ async function parseHashUrlTokens() {
       tokenHash = hash.substring(1)
     }
     
-    console.log('[APP] Parsing tokenHash:', tokenHash)
-    
     const hashParams = new URLSearchParams(tokenHash)
     const error = hashParams.get('error')
     const errorCode = hashParams.get('error_code')
     const errorDescription = hashParams.get('error_description')
     
-    console.log('[APP] Parsed error:', error, errorCode, errorDescription)
-    
     if (error || errorCode) {
-      console.log('[APP] Error in URL hash:', error, errorCode, errorDescription)
-      
       // Decode the error description (URL encoded)
       const decodedDescription = errorDescription ? decodeURIComponent(errorDescription.replace(/\+/g, ' ')) : ''
       
@@ -88,12 +79,8 @@ async function parseHashUrlTokens() {
   const refreshToken = hashParams.get('refresh_token') || hashParams.get('/refresh_token') || ''
   const expiresIn = hashParams.get('expires_in') || hashParams.get('/expires_in') || '3600'
   const expiresAt = hashParams.get('expires_at') || hashParams.get('/expires_at')
-  const type = hashParams.get('type') || hashParams.get('/type') // 'signup' or 'login'
 
   if (accessToken) {
-    console.log('[APP] Found tokens in URL hash, exchanging for session...')
-    console.log('[APP] Token type:', type)
-    
     // Build the token response format that Supabase expects
     const tokenData = {
       access_token: accessToken,
@@ -106,8 +93,6 @@ async function parseHashUrlTokens() {
     try {
       const { error } = await supabase.auth.setSession(tokenData)
       if (error) {
-        console.error('[APP] Error setting session from hash tokens:', error)
-        
         // Store error for display with French translation
         let errorMessage = error.message
         if (error.message.toLowerCase().includes('expired')) {
@@ -121,17 +106,8 @@ async function parseHashUrlTokens() {
         // Use hash-based navigation to go to login
         navigateWithHash('/login')
       } else {
-        console.log('[APP] Session established from URL tokens')
-        
         // Reinitialize auth store to get user profile
         await authStore.initialize()
-        
-        // Debug: log the user role
-        console.log('[APP] User after initialize:', authStore.user)
-        console.log('[APP] User role:', authStore.user?.role)
-        console.log('[APP] User status:', authStore.user?.status)
-        console.log('[APP] Is journalist:', authStore.isJournalist)
-        console.log('[APP] Is pending:', authStore.isPending)
         
         // Note: email confirmation is handled by Supabase auth - if we have a valid
         // session from the URL hash, the email has already been confirmed.
@@ -150,8 +126,6 @@ async function parseHashUrlTokens() {
         } else if (authStore.isJournalist) {
           // If user is journalist but status is pending, show application status page
           if (authStore.isPending) {
-            // DEBUG: Log the redirect decision
-            console.log('[APP] Pending journalist detected, redirecting to application status')
             redirectHash = '/journalistes/application-status'
           } else if (authStore.isActive) {
             redirectHash = '/journalistes/dashboard'
@@ -163,8 +137,6 @@ async function parseHashUrlTokens() {
           redirectHash = '/users/dashboard'
         }
         
-        console.log('[APP] Final redirect hash:', redirectHash)
-        
         // Clear the hash first to prevent issues
         window.location.hash = ''
         // Use setTimeout to allow hash to clear, then navigate to the appropriate route
@@ -173,7 +145,6 @@ async function parseHashUrlTokens() {
         }, 50)
       }
     } catch (e) {
-      console.error('[APP] Exception setting session from hash tokens:', e)
       // Store error for display
       sessionStorage.setItem('confirmation_error', 'Une erreur inattendue est survenue')
       // Use hash-based navigation to go to login
@@ -207,8 +178,6 @@ onMounted(async () => {
       } else if (authStore.isJournalist) {
         // If user is journalist but status is pending, show application status page
         if (authStore.isPending) {
-          // DEBUG: Log the redirect decision
-          console.log('[APP] Pending journalist detected (justConfirmed), redirecting to application status')
           window.location.hash = '/journalistes/application-status'
         } else if (authStore.isActive) {
           window.location.hash = '/journalistes/dashboard'

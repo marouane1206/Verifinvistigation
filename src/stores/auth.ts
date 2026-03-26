@@ -33,12 +33,10 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data, error } = await supabase.auth.getUser()
       if (error) {
-        console.error('[AUTH] Error checking email confirmation:', error)
         return false
       }
       return data?.user?.email_confirmed_at ? true : false
     } catch (e) {
-      console.error('[AUTH] Error checking email confirmation:', e)
       return false
     }
   }
@@ -46,17 +44,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function initialize() {
     loading.value = true
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        console.error('[AUTH] Session error:', sessionError)
-      }
+      const { data: { session } } = await supabase.auth.getSession()
       
       if (session?.user) {
         await fetchUserProfile(session.user.id)
       }
     } catch (e) {
-      console.error('[AUTH] Error initializing auth:', e)
+      // Silent fail on initialization
     } finally {
       loading.value = false
     }
@@ -67,23 +61,12 @@ export const useAuthStore = defineStore('auth', () => {
     const { data: authData, error: authError } = await supabase.auth.getUser()
     
     // Handle JWT validation errors - token is malformed or expired
-    if (authError?.message?.includes('invalid JWT') || authError?.message?.includes('token is malformed')) {
-      console.warn('[AUTH] Invalid JWT detected, clearing corrupted session...')
+    if (authError?.message?.includes('invalid jwt') || authError?.message?.includes('token is malformed')) {
       // Clear the corrupted session
       await supabase.auth.signOut()
       user.value = null
-      console.log('[AUTH] Session cleared due to invalid JWT')
       return
     }
-    
-    if (authError) {
-      console.error('[AUTH] Auth error:', authError)
-      // If getUser fails for other reasons, still try to fetch profile
-    }
-    
-    // Debug: log user metadata from auth
-    console.log('[AUTH] User metadata:', authData?.user?.user_metadata)
-    console.log('[AUTH] is_journalist in metadata:', authData?.user?.user_metadata?.is_journalist)
     
     // Wait a moment for the trigger to complete (if this is a new user registration)
     await new Promise(resolve => setTimeout(resolve, 500))
@@ -95,14 +78,8 @@ export const useAuthStore = defineStore('auth', () => {
       .single()
 
     if (fetchError) {
-      console.error('[AUTH] Error fetching user profile:', fetchError)
-      console.error('[AUTH] Error code:', fetchError.code)
-      console.error('[AUTH] Error details:', fetchError.details)
-      
       // Handle 406 error - profile might not exist, try to create it
       if (fetchError.code === '406' || fetchError.code === 'PGRST116') {
-        console.warn('[AUTH] Profile not found, attempting to create it...')
-        
         // Try to create the profile - check if this is a journalist registration
         const email = authData?.user?.email || ''
         const username = authData?.user?.email?.split('@')[0] || 'user'
@@ -116,8 +93,6 @@ export const useAuthStore = defineStore('auth', () => {
           status = 'pending'
         }
         
-        console.log('[AUTH] Creating profile with role:', role, 'status:', status)
-        
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
@@ -129,7 +104,6 @@ export const useAuthStore = defineStore('auth', () => {
           })
         
         if (insertError) {
-          console.error('[AUTH] Failed to create profile:', insertError)
           return
         }
         
@@ -141,7 +115,6 @@ export const useAuthStore = defineStore('auth', () => {
           .single()
         
         if (newFetchError) {
-          console.error('[AUTH] Error fetching newly created profile:', newFetchError)
           return
         }
         
@@ -165,15 +138,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     if (data) {
-      console.log('[AUTH] Profile from DB - role:', data.role, 'status:', data.status)
-      
       // FIX: Check if user has a journalist application but wrong role
       // This handles the case where the trigger failed to set the correct role
       if (data.role === 'user') {
-        console.log('[AUTH] Profile has role=user, checking for journalist application...')
-        
         // Check if there's a journalist application for this user
-        const { data: appData, error: appError } = await supabase
+        const { data: appData } = await supabase
           .from('journalist_applications')
           .select('status')
           .eq('user_id', userId)
@@ -182,32 +151,24 @@ export const useAuthStore = defineStore('auth', () => {
           .limit(1)
           .single()
         
-        if (appData && !appError) {
-          console.log('[AUTH] Found journalist application with status:', appData.status)
-          
+        if (appData) {
           // Update the profile with the correct role and status
           let newRole = 'journalist'
           let newStatus = appData.status === 'approved' ? 'active' : 'pending'
-          
-          console.log('[AUTH] Fixing profile: setting role to', newRole, 'and status to', newStatus)
           
           const { error: updateError } = await supabase
             .from('profiles')
             .update({ role: newRole, status: newStatus })
             .eq('id', userId)
           
-          if (updateError) {
-            console.error('[AUTH] Failed to fix profile:', updateError)
-            // Use the application status to determine the correct status
+          if (!updateError) {
             data.role = newRole
             data.status = newStatus
           } else {
-            console.log('[AUTH] Profile fixed successfully')
+            // Use the application status to determine the correct status
             data.role = newRole
             data.status = newStatus
           }
-        } else {
-          console.log('[AUTH] No journalist application found, keeping role=user')
         }
       }
       
@@ -243,13 +204,11 @@ export const useAuthStore = defineStore('auth', () => {
         .single()
       
       if (fetchError) {
-        console.error('[AUTH] Error checking user status:', fetchError)
         return null
       }
       
       return (data.status as 'active' | 'pending' | 'rejected') || 'active'
     } catch (e) {
-      console.error('[AUTH] Error checking user status:', e)
       return null
     }
   }
@@ -272,14 +231,12 @@ export const useAuthStore = defineStore('auth', () => {
         .single()
       
       if (fetchError) {
-        console.error('[AUTH] Error checking force password change:', fetchError)
         return false
       }
       
       forcePasswordChange.value = data?.force_password_change === true
       return forcePasswordChange.value
     } catch (e) {
-      console.error('[AUTH] Error checking force password change:', e)
       return false
     }
   }
@@ -318,7 +275,6 @@ export const useAuthStore = defineStore('auth', () => {
           error.value = 'Vous avez récemment changé votre mot de passe. Veuillez patienter avant de le changer à nouveau.'
         } else {
           error.value = 'Erreur lors de la mise à jour du mot de passe'
-          console.error('[AUTH] Password update error:', authError.message)
         }
         return { success: false, error: error.value }
       }
@@ -333,7 +289,6 @@ export const useAuthStore = defineStore('auth', () => {
         .eq('id', user.value.id)
       
       if (profileError) {
-        console.error('[AUTH] Error updating profile force_password_change:', profileError)
         // Password was updated in auth, but profile update failed
         // Still return success but log the error
       }
@@ -343,7 +298,6 @@ export const useAuthStore = defineStore('auth', () => {
       
       return { success: true }
     } catch (e: any) {
-      console.error('[AUTH] Unexpected password update error:', e)
       error.value = 'Une erreur inattendue est survenue lors de la mise à jour du mot de passe'
       return { success: false, error: error.value }
     } finally {
@@ -365,14 +319,12 @@ export const useAuthStore = defineStore('auth', () => {
         .eq('id', user.value.id)
       
       if (updateError) {
-        console.error('[AUTH] Error clearing force password change:', updateError)
         return false
       }
       
       forcePasswordChange.value = false
       return true
     } catch (e) {
-      console.error('[AUTH] Error clearing force password change:', e)
       return false
     }
   }
@@ -381,13 +333,10 @@ export const useAuthStore = defineStore('auth', () => {
   // This is useful after role updates (e.g., after application approval)
   async function refreshUserProfile(): Promise<boolean> {
     if (!user.value) {
-      console.warn('[AUTH] Cannot refresh profile - no user logged in')
       return false
     }
     
     try {
-      console.log('[AUTH] Refreshing user profile for:', user.value.id)
-      
       const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -395,13 +344,10 @@ export const useAuthStore = defineStore('auth', () => {
         .single()
 
       if (fetchError) {
-        console.error('[AUTH] Error refreshing profile:', fetchError)
         return false
       }
 
       if (data) {
-        console.log('[AUTH] Fresh profile data - role:', data.role, 'status:', data.status)
-        
         // Ensure role has a valid value
         const finalRole = data.role || 'user'
         const finalStatus = data.status || 'active'
@@ -415,13 +361,11 @@ export const useAuthStore = defineStore('auth', () => {
           created_at: data.created_at,
         }
         
-        console.log('[AUTH] User profile refreshed, new role:', finalRole)
         return true
       }
       
       return false
     } catch (e) {
-      console.error('[AUTH] Unexpected error refreshing profile:', e)
       return false
     }
   }
@@ -451,7 +395,6 @@ export const useAuthStore = defineStore('auth', () => {
         } else {
           // For any other errors, provide a French user-friendly message
           error.value = 'Une erreur est survenue lors de la connexion. Veuillez réessayer.'
-          console.error('[AUTH] Login error:', authError.message)
         }
         return false
       }
@@ -473,7 +416,6 @@ export const useAuthStore = defineStore('auth', () => {
       return false
     } catch (e: any) {
       // Catch any unexpected errors and translate to French
-      console.error('[AUTH] Unexpected login error:', e)
       error.value = 'Une erreur inattendue est survenue. Veuillez réessayer plus tard.'
       return false
     } finally {
@@ -532,11 +474,9 @@ export const useAuthStore = defineStore('auth', () => {
         } else if (authError.status === 500) {
           // Handle 500 errors which often indicate SMTP configuration issues
           error.value = 'Erreur serveur. Veuillez réessayer plus tard ou contacter le support.'
-          console.error('[AUTH] Server error (500):', authError.message)
         } else {
           // For any other errors, provide a French user-friendly message
           error.value = 'Une erreur est survenue lors de l\'inscription. Veuillez réessayer.'
-          console.error('[AUTH] Registration error:', authError.message)
         }
         return false
       }
@@ -549,20 +489,15 @@ export const useAuthStore = defineStore('auth', () => {
         // Wait a moment for the trigger to complete, then fetch the profile
         await new Promise(resolve => setTimeout(resolve, 1000))
         
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
           .single()
 
-        if (profileError) {
-          console.error('[AUTH] Error fetching profile:', profileError)
-        }
-
         const userRole = profileData?.role || (isJournalist ? 'journalist' : 'user')
         
         // Check if email confirmation is required
-        
         // Check if email confirmation is required
         // If data.session is null, it means email confirmation is required
         if (!data.session) {
@@ -598,7 +533,7 @@ export const useAuthStore = defineStore('auth', () => {
       await supabase.auth.signOut()
       user.value = null
     } catch (e) {
-      console.error('Error logging out:', e)
+      // Silent fail on logout
     } finally {
       loading.value = false
     }

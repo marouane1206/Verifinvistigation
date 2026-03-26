@@ -368,13 +368,11 @@ router.beforeEach(async (to, _from) => {
     // Check if journalist account is still pending approval
     if (authStore.isPending) {
       // Journalist account is pending - redirect to application status page
-      console.log('[ROUTER] Pending journalist, redirecting to application status')
       return { name: 'journalist-application-status' }
     }
     // Check if journalist account was rejected
     if (authStore.isRejected) {
       // Journalist account was rejected - redirect to application status page
-      console.log('[ROUTER] Rejected journalist, redirecting to application status')
       return { name: 'journalist-application-status' }
     }
     // Check email confirmation for journalist role

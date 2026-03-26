@@ -52,11 +52,7 @@ let lastSubmitTime = 0
 
 // Helper function to wait for profile creation with polling
 const waitForProfileCreation = async (userId: string, maxAttempts = 10): Promise<{success: boolean; profileId?: string}> => {
-  console.log('[JournalistRegister] waitForProfileCreation called for user:', userId)
-  
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    console.log('[JournalistRegister] Profile check attempt:', attempt + 1)
-    
     const { data, error } = await supabase
       .from('profiles')
       .select('id')
@@ -64,18 +60,12 @@ const waitForProfileCreation = async (userId: string, maxAttempts = 10): Promise
       .single()
     
     if (!error && data) {
-      console.log('[JournalistRegister] Profile found:', data.id)
       return { success: true, profileId: data.id }
-    }
-    
-    if (error) {
-      console.log('[JournalistRegister] Profile check error:', error.code, error.message)
     }
     
     await new Promise(resolve => setTimeout(resolve, 500))
   }
   
-  console.warn('[JournalistRegister] Profile not found after max attempts')
   return { success: false }
 }
 
@@ -193,40 +183,21 @@ async function handleSubmit() {
     // Wait for profile to be created by trigger (with polling for up to 5 seconds)
     const profileResult = await waitForProfileCreation(authData.user.id)
     if (!profileResult.success) {
-      console.error('[JournalistRegister] Profile creation failed or timed out')
       errorMessage.value = 'Erreur lors de la création du profil. Veuillez réessayer.'
       isSubmitting.value = false
       return
     }
-    console.log('[JournalistRegister] Profile confirmed, now creating application...')
     
     // Step 2: Force session refresh to ensure auth tokens are properly set
     // This is crucial for RLS policies to work
-    const { data: sessionRefreshData, error: sessionRefreshError } = await supabase.auth.getSession()
-    
-    if (sessionRefreshError) {
-      console.error('[JournalistRegister] Session refresh error:', sessionRefreshError)
-    }
+    const { data: sessionRefreshData } = await supabase.auth.getSession()
     
     // If no session, explicitly set the session from authData
     if (!sessionRefreshData.session && authData.session) {
-      console.log('[JournalistRegister] Manually setting session from signup response')
       await supabase.auth.setSession({
         access_token: authData.session.access_token,
         refresh_token: authData.session.refresh_token
       })
-    }
-    
-    // Verify we have a valid session now
-    const { data: finalSession, error: finalSessionError } = await supabase.auth.getSession()
-    if (finalSessionError) {
-      console.error('[JournalistRegister] Final session check error:', finalSessionError)
-    }
-    
-    if (!finalSession.session) {
-      console.warn('[JournalistRegister] No active session - this may cause 401 error on insert')
-    } else {
-      console.log('[JournalistRegister] Session verified, user:', finalSession.session.user.id)
     }
     
     // Step 3: Create journalist application
@@ -248,10 +219,6 @@ async function handleSubmit() {
       })
     
     if (applicationError) {
-      console.error('[JournalistRegister] Application error:', applicationError)
-      // Note: Cannot rollback user deletion from frontend without service role key
-      // The user will remain in auth but with no application - admin can handle cleanup
-      console.warn('[JournalistRegister] User created but application failed - manual cleanup may be needed')
       errorMessage.value = 'Erreur lors de la soumission de la demande'
       isSubmitting.value = false
       return
@@ -261,7 +228,6 @@ async function handleSubmit() {
     registrationSuccess.value = true
     
   } catch (error: any) {
-    console.error('[JournalistRegister] Unexpected error:', error)
     errorMessage.value = 'Une erreur inattendue est survenue'
   } finally {
     isSubmitting.value = false
