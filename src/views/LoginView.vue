@@ -125,45 +125,9 @@ async function handleResendConfirmation() {
   resendLoading.value = true
   
   try {
-    // Check if the email exists in the database (profiles table)
-    // Note: We need RLS policies to allow this check
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, status')
-      .eq('email', resendEmail.value)
-      .maybeSingle()
-    
-    if (profileError) {
-      console.error('[LoginView] Profile lookup error:', profileError)
-      // Don't show specific error to user for security - just handle gracefully
-      // Show generic message and allow resend attempt
-    }
-    
-    if (!profileData) {
-      // Email not found in database - show error with options
-      resendError.value = ''
-      showResendConfirmation.value = false
-      errors.value.general = `Cette adresse email n'est pas enregistrée dans notre système. Veuillez créer un compte ou vérifier votre adresse email.`
-      return
-    }
-    
-    // Email exists - check if account is active
-    if (profileData.status === 'rejected') {
-      resendError.value = ''
-      showResendConfirmation.value = false
-      errors.value.general = 'Votre compte a été rejeté. Veuillez contacter le support pour plus d\'informations.'
-      return
-    }
-    
-    if (profileData.status === 'active') {
-      // Account is already active - prompt to login
-      resendError.value = ''
-      showResendConfirmation.value = false
-      errors.value.general = 'Ce compte est déjà actif. Veuillez vous connecter avec votre mot de passe.'
-      return
-    }
-    
-    // Email exists but status is 'pending' - try to resend confirmation
+    // Simplified: Just try to resend confirmation directly
+    // Skip the profile lookup to avoid database errors
+    // If the user exists in auth.users, they can request a new confirmation
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: resendEmail.value,

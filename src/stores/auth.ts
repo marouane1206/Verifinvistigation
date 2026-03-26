@@ -103,65 +103,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
     
     if (!data && lastError) {
-      // Handle 406 error - profile might not exist, try to create it
-      if (lastError.code === '406' || lastError.code === 'PGRST116') {
-        // Try to create the profile - check if this is a journalist registration
-        const email = authData?.user?.email || ''
-        const username = authData?.user?.email?.split('@')[0] || 'user'
-        const isJournalist = authData?.user?.user_metadata?.is_journalist
-        
-        // Determine role based on metadata
-        let role = 'user'
-        let status = 'active'
-        if (isJournalist === 'true' || isJournalist === true) {
-          role = 'journalist'
-          status = 'pending'
-        }
-        
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            email,
-            username,
-            role,
-            status,
-          })
-        
-        if (insertError) {
-          return
-        }
-        
-        // Fetch the newly created profile
-        const { data: newData, error: newFetchError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single()
-        
-        if (newFetchError) {
-          return
-        }
-        
-        if (newData) {
-          // Ensure role has a valid value - fallback to 'user' if null/undefined
-          const createdRole = newData.role || 'user'
-          // Ensure status has a valid value - fallback to 'active' if null/undefined
-          const createdStatus = newData.status || 'active'
-          user.value = {
-            id: newData.id,
-            email: newData.email || email,
-            username: newData.username,
-            role: createdRole,
-            status: createdStatus,
-            created_at: newData.created_at,
-          }
-        }
-        return
+      // If profile fetch keeps failing, use auth data as fallback
+      console.warn('[Auth] Profile fetch failed, using auth data as fallback')
+      const email = authData?.user?.email || ''
+      const username = authData?.user?.email?.split('@')[0] || 'user'
+      
+      // Create a minimal user object from auth data
+      user.value = {
+        id: userId,
+        email: email,
+        username: username,
+        role: 'user',
+        status: 'active',
+        created_at: new Date().toISOString(),
       }
       return
     }
-
+    
     if (data) {
       // FIX: Check if user has a journalist application but wrong role
       // This handles the case where the trigger failed to set the correct role
