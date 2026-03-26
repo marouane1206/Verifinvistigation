@@ -148,9 +148,11 @@ async function parseHashUrlTokens() {
         if (authStore.isAdmin) {
           redirectHash = '/admin'
         } else if (authStore.isJournalist) {
-          // If user is journalist but status is pending, show pending approval page
+          // If user is journalist but status is pending, show application status page
           if (authStore.isPending) {
-            redirectHash = '/journalistes/pending'
+            // DEBUG: Log the redirect decision
+            console.log('[APP] Pending journalist detected, redirecting to application status')
+            redirectHash = '/journalistes/application-status'
           } else if (authStore.isActive) {
             redirectHash = '/journalistes/dashboard'
           } else {
@@ -160,6 +162,8 @@ async function parseHashUrlTokens() {
         } else if (authStore.isStandardUser) {
           redirectHash = '/users/dashboard'
         }
+        
+        console.log('[APP] Final redirect hash:', redirectHash)
         
         // Clear the hash first to prevent issues
         window.location.hash = ''
@@ -201,9 +205,11 @@ onMounted(async () => {
       if (authStore.isAdmin) {
         window.location.hash = '/admin'
       } else if (authStore.isJournalist) {
-        // If user is journalist but status is pending, show pending approval page
+        // If user is journalist but status is pending, show application status page
         if (authStore.isPending) {
-          window.location.hash = '/journalistes/pending'
+          // DEBUG: Log the redirect decision
+          console.log('[APP] Pending journalist detected (justConfirmed), redirecting to application status')
+          window.location.hash = '/journalistes/application-status'
         } else if (authStore.isActive) {
           window.location.hash = '/journalistes/dashboard'
         } else {
