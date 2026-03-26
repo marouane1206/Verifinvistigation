@@ -126,10 +126,16 @@ async function parseHashUrlTokens() {
         // Reinitialize auth store to get user profile
         await authStore.initialize()
         
+        // Debug: log the user role
+        console.log('[APP] User after initialize:', authStore.user)
+        console.log('[APP] User role:', authStore.user?.role)
+        console.log('[APP] User status:', authStore.user?.status)
+        console.log('[APP] Is journalist:', authStore.isJournalist)
+        console.log('[APP] Is pending:', authStore.isPending)
+        
         // Note: email confirmation is handled by Supabase auth - if we have a valid
         // session from the URL hash, the email has already been confirmed.
         // No need to check for email_confirmed_at in profiles table.
-        console.log('[APP] Session established from URL tokens')
         
         // Store session flag to track that we just established a session from URL
         sessionStorage.setItem('just_confirmed', 'true')
@@ -142,7 +148,17 @@ async function parseHashUrlTokens() {
         if (authStore.isAdmin) {
           redirectHash = '/admin'
         } else if (authStore.isJournalist) {
-          redirectHash = '/journalistes/dashboard'
+          // If user is journalist but status is pending, show pending approval page
+          if (authStore.isPending) {
+            redirectHash = '/journalistes/pending'
+          } else if (authStore.isActive) {
+            redirectHash = '/journalistes/dashboard'
+          } else {
+            // For rejected or other statuses, show the user dashboard
+            redirectHash = '/users/dashboard'
+          }
+        } else if (authStore.isStandardUser) {
+          redirectHash = '/users/dashboard'
         }
         
         // Clear the hash first to prevent issues
@@ -181,11 +197,19 @@ onMounted(async () => {
       // Give a small delay to ensure routing is ready
       await new Promise(resolve => setTimeout(resolve, 50))
       
-      // Redirect based on user role
+      // Redirect based on user role and status
       if (authStore.isAdmin) {
         window.location.hash = '/admin'
       } else if (authStore.isJournalist) {
-        window.location.hash = '/journalistes/dashboard'
+        // If user is journalist but status is pending, show pending approval page
+        if (authStore.isPending) {
+          window.location.hash = '/journalistes/pending'
+        } else if (authStore.isActive) {
+          window.location.hash = '/journalistes/dashboard'
+        } else {
+          // For rejected or other statuses, show the user dashboard
+          window.location.hash = '/users/dashboard'
+        }
       } else {
         window.location.hash = '/users/dashboard'
       }
