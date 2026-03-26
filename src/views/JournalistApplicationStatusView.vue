@@ -2,12 +2,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApplicationsStore } from '../stores/applications'
-import { useAuthStore } from '../stores/auth'
 import BaseButton from '../components/BaseButton.vue'
 
 const router = useRouter()
 const applicationsStore = useApplicationsStore()
-const authStore = useAuthStore()
 
 const loading = ref(true)
 const application = ref<any>(null)
@@ -86,42 +84,6 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen bg-ardoise-50 flex flex-col">
-    <!-- Header -->
-    <header class="bg-white shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center justify-between">
-          <router-link to="/" class="flex items-center space-x-2">
-            <svg class="h-8 w-8 text-nuit-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-            </svg>
-            <span class="text-xl font-bold text-nuit-600">Verifinvestigation</span>
-          </router-link>
-          <div class="flex items-center space-x-4">
-            <template v-if="authStore.isAuthenticated">
-              <router-link to="/settings">
-                <BaseButton variant="outline" size="sm">
-                  Paramètres
-                </BaseButton>
-              </router-link>
-              <button 
-                @click="authStore.logout(); router.push('/')"
-                class="text-gray-600 hover:text-nuit-600"
-              >
-                Déconnexion
-              </button>
-            </template>
-            <template v-else>
-              <router-link to="/login">
-                <BaseButton variant="outline" size="sm">
-                  Connexion
-                </BaseButton>
-              </router-link>
-            </template>
-          </div>
-        </div>
-      </div>
-    </header>
-
     <!-- Main Content -->
     <main class="flex-1 flex items-center justify-center py-12 px-4">
       <div class="max-w-md w-full">
@@ -226,14 +188,5 @@ onMounted(async () => {
         </div>
       </div>
     </main>
-
-    <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 py-6">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p class="text-gray-500 text-sm">
-          © {{ new Date().getFullYear() }} Verifinvestigation. Tous droits réservés.
-        </p>
-      </div>
-    </footer>
   </div>
 </template>
