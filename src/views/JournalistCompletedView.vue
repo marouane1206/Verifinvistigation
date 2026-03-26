@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { useReportsStore } from '../stores/reports'
 import BaseButton from '../components/BaseButton.vue'
 import BaseBadge from '../components/BaseBadge.vue'
 
 const router = useRouter()
 const reportsStore = useReportsStore()
+const authStore = useAuthStore()
 
 const loading = computed(() => reportsStore.loading)
 
-// Only show pending reports that are not assigned yet
-const pendingReports = computed(() => 
-  reportsStore.reports.filter(r => r.status === 'en_attente' && !r.assigned_to)
+// Show completed reports (status = 'termine') assigned to current journalist
+const completedReports = computed(() => 
+  reportsStore.reports.filter(r => r.status === 'termine' && r.assigned_to === authStore.user?.id)
 )
 
 function formatDate(date: string) {
@@ -38,10 +40,10 @@ onMounted(async () => {
       <!-- Header -->
       <div class="mb-8">
         <h1 class="text-2xl md:text-3xl font-bold text-gray-900">
-          Signalements en attente
+          Investigations terminées
         </h1>
         <p class="text-gray-600 mt-1">
-          Liste des signalements disponibles pour investigation. Consultez les détails ci-dessous.
+          Liste des investigations que vous avez terminées.
         </p>
       </div>
 
@@ -51,7 +53,7 @@ onMounted(async () => {
       </div>
 
       <!-- Reports Table -->
-      <div v-else-if="pendingReports.length > 0" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div v-else-if="completedReports.length > 0" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
@@ -69,7 +71,10 @@ onMounted(async () => {
                   Statut
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                  Date de création
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date de fin
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Auteur
@@ -81,7 +86,7 @@ onMounted(async () => {
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr 
-                v-for="report in pendingReports" 
+                v-for="report in completedReports" 
                 :key="report.id"
                 class="hover:bg-gray-50 transition-colors"
               >
@@ -104,11 +109,16 @@ onMounted(async () => {
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <BaseBadge status="en_attente">En attente</BaseBadge>
+                  <BaseBadge status="termine">Terminé</BaseBadge>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-500">
                     {{ formatDate(report.created_at) }}
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-500">
+                    {{ report.updated_at ? formatDate(report.updated_at) : '-' }}
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -136,12 +146,12 @@ onMounted(async () => {
 
       <!-- Empty State -->
       <div v-else class="text-center py-12 bg-white rounded-xl border border-gray-200">
-        <div class="text-6xl mb-4">📋</div>
+        <div class="text-6xl mb-4">✅</div>
         <h3 class="text-xl font-semibold text-gray-900 mb-2">
-          Aucun signalement en attente
+          Aucune investigation terminée
         </h3>
         <p class="text-gray-600">
-          Tous les signalements ont été assignés ou traités.
+          Vous n'avez pas encore terminé d'investigations.
         </p>
       </div>
     </div>

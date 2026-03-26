@@ -14,6 +14,8 @@ const UserVerificationsView = () => import('../views/UserVerificationsView.vue')
 const JournalistDashboardView = () => import('../views/JournalistDashboardView.vue')
 const JournalistPendingView = () => import('../views/JournalistPendingView.vue')
 const JournalistVerifyView = () => import('../views/JournalistVerifyView.vue')
+const JournalistCompletedView = () => import('../views/JournalistCompletedView.vue')
+const JournalistAvailableView = () => import('../views/JournalistAvailableView.vue')
 const InvestigationDetailsView = () => import('../views/InvestigationDetailsView.vue')
 const SettingsView = () => import('../views/SettingsView.vue')
 
@@ -97,13 +99,13 @@ const routes = [
     path: '/signaler/:type?',
     name: 'report-form',
     component: ReportFormView,
-    meta: { role: 'auth' as RouteRole },
+    meta: { role: 'auth' as RouteRole, allowJournalist: false },
   },
   {
     path: '/verifier/:type?',
     name: 'verify',
     component: ReportFormView,
-    meta: { role: 'auth' as RouteRole },
+    meta: { role: 'auth' as RouteRole, allowJournalist: false },
   },
   {
     path: '/settings',
@@ -121,6 +123,18 @@ const routes = [
     path: '/journaliste/verify',
     name: 'journalist-verify',
     component: JournalistVerifyView,
+    meta: { role: 'journalist' as RouteRole },
+  },
+  {
+    path: '/journaliste/completed',
+    name: 'journalist-completed',
+    component: JournalistCompletedView,
+    meta: { role: 'journalist' as RouteRole },
+  },
+  {
+    path: '/journaliste/available',
+    name: 'journalist-available',
+    component: JournalistAvailableView,
     meta: { role: 'journalist' as RouteRole },
   },
   {
@@ -315,6 +329,11 @@ router.beforeEach(async (to, _from) => {
     if (!isConfirmed) {
       // User is logged in but email not confirmed - redirect to login with message
       return { name: 'login', query: { redirect: to.fullPath, unconfirmed: '1' } }
+    }
+    // Block journalist role from accessing routes that don't allow journalists
+    // (like creating new signalements/verifications)
+    if (authStore.isJournalist && to.meta.allowJournalist === false) {
+      return { name: 'journalist-dashboard' }
     }
     return true
   }

@@ -64,7 +64,15 @@ const contentForm = ref({
 })
 
 const isJournalist = computed(() => {
-  return authStore.user?.role === 'journalist' || authStore.user?.role === 'admin'
+  return authStore.user?.role === 'journalist'
+})
+
+const isAdmin = computed(() => {
+  return authStore.user?.role === 'admin'
+})
+
+const canEdit = computed(() => {
+  return isAdmin.value
 })
 
 const canDeleteDocument = computed(() => {
@@ -290,8 +298,8 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Actions for Journalists -->
-            <div v-if="isJournalist" class="flex flex-col gap-2">
+            <!-- Actions for Admin Only -->
+            <div v-if="canEdit" class="flex flex-col gap-2">
               <BaseButton
                 variant="primary"
                 size="sm"
@@ -391,8 +399,8 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- No Investigation Yet -->
-          <div v-else-if="!editingContent && isJournalist" class="text-center py-8">
+          <!-- No Investigation Yet - Admin Only -->
+          <div v-else-if="!editingContent && canEdit" class="text-center py-8">
             <div class="text-4xl mb-4">📝</div>
             <p class="text-gray-600 mb-4">
               Aucune enquête rédigée pour ce signalement.
