@@ -339,6 +339,11 @@ export const useReportsStore = defineStore('reports', () => {
         .order('created_at', { ascending: false })
 
       if (fetchError) {
+        // Handle 500 errors gracefully
+        if (String(fetchError.code).includes('500') || fetchError.message?.includes('500')) {
+          console.warn('[Reports] Fetch pending failed with 500, returning empty array')
+          return []
+        }
         error.value = fetchError.message
         return []
       }
