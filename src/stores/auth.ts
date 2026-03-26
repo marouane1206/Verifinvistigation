@@ -81,6 +81,13 @@ export const useAuthStore = defineStore('auth', () => {
       // If getUser fails for other reasons, still try to fetch profile
     }
     
+    // Debug: log user metadata from auth
+    console.log('[AUTH] User metadata:', authData?.user?.user_metadata)
+    console.log('[AUTH] is_journalist in metadata:', authData?.user?.user_metadata?.is_journalist)
+    
+    // Wait a moment for the trigger to complete (if this is a new user registration)
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
     const { data, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
@@ -96,9 +103,20 @@ export const useAuthStore = defineStore('auth', () => {
       if (fetchError.code === '406' || fetchError.code === 'PGRST116') {
         console.warn('[AUTH] Profile not found, attempting to create it...')
         
-        // Try to create the profile
+        // Try to create the profile - check if this is a journalist registration
         const email = authData?.user?.email || ''
         const username = authData?.user?.email?.split('@')[0] || 'user'
+        const isJournalist = authData?.user?.user_metadata?.is_journalist
+        
+        // Determine role based on metadata
+        let role = 'user'
+        let status = 'active'
+        if (isJournalist === 'true' || isJournalist === true) {
+          role = 'journalist'
+          status = 'pending'
+        }
+        
+        console.log('[AUTH] Creating profile with role:', role, 'status:', status)
         
         const { error: insertError } = await supabase
           .from('profiles')
@@ -106,7 +124,8 @@ export const useAuthStore = defineStore('auth', () => {
             id: userId,
             email,
             username,
-            role: 'user',
+            role,
+            status,
           })
         
         if (insertError) {
@@ -146,6 +165,52 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     if (data) {
+      console.log('[AUTH] Profile from DB - role:', data.role, 'status:', data.status)
+      
+      // FIX: Check if user has a journalist application but wrong role
+      // This handles the case where the trigger failed to set the correct role
+      if (data.role === 'user') {
+        console.log('[AUTH] Profile has role=user, checking for journalist application...')
+        
+        // Check if there's a journalist application for this user
+        const { data: appData, error: appError } = await supabase
+          .from('journalist_applications')
+          .select('status')
+          .eq('user_id', userId)
+          .in('status', ['pending', 'approved'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+        
+        if (appData && !appError) {
+          console.log('[AUTH] Found journalist application with status:', appData.status)
+          
+          // Update the profile with the correct role and status
+          let newRole = 'journalist'
+          let newStatus = appData.status === 'approved' ? 'active' : 'pending'
+          
+          console.log('[AUTH] Fixing profile: setting role to', newRole, 'and status to', newStatus)
+          
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ role: newRole, status: newStatus })
+            .eq('id', userId)
+          
+          if (updateError) {
+            console.error('[AUTH] Failed to fix profile:', updateError)
+            // Use the application status to determine the correct status
+            data.role = newRole
+            data.status = newStatus
+          } else {
+            console.log('[AUTH] Profile fixed successfully')
+            data.role = newRole
+            data.status = newStatus
+          }
+        } else {
+          console.log('[AUTH] No journalist application found, keeping role=user')
+        }
+      }
+      
       // Ensure role has a valid value - fallback to 'user' if null/undefined
       const finalRole = data.role || 'user'
       // Ensure status has a valid value - fallback to 'active' if null/undefined
