@@ -2,10 +2,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApplicationsStore } from '../stores/applications'
+import { useAuthStore } from '../stores/auth'
 import BaseButton from '../components/BaseButton.vue'
 
 const router = useRouter()
 const applicationsStore = useApplicationsStore()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const application = ref<any>(null)
@@ -13,41 +15,59 @@ const application = ref<any>(null)
 const status = computed(() => application.value?.status || null)
 
 const statusConfig = computed(() => {
-  switch (status.value) {
-    case 'pending':
-      return {
-        title: 'Votre demande est en cours d\'examen',
-        description: 'Nous avons bien reçu votre demande d\'inscription en tant que journaliste. Notre équipe l\'examine actuellement. Ce processus peut prendre quelques jours.',
-        icon: '⏳',
-        color: 'yellow',
-        showDashboardLink: false
-      }
-    case 'approved':
-      return {
-        title: 'Félicitations ! Votre demande a été approuvée',
-        description: 'Votre inscription en tant que journaliste a été acceptée. Vous avez maintenant accès au tableau de bord journaliste et pouvez commencer à publier vos investigations.',
-        icon: '🎉',
-        color: 'green',
-        showDashboardLink: true
-      }
-    case 'rejected':
-      return {
-        title: 'Votre demande a été rejetée',
-        description: application.value?.admin_notes 
-          ? `Motif: ${application.value.admin_notes}`
-          : 'Nous regrettons de vous informer que votre demande d\'inscription en tant que journaliste n\'a pas pu être acceptée. Veuillez nous contacter pour plus d\'informations.',
-        icon: '❌',
-        color: 'red',
-        showDashboardLink: false
-      }
-    default:
-      return {
-        title: 'Aucune demande trouvée',
-        description: 'Vous n\'avez pas de demande d\'inscription en tant que journaliste.',
-        icon: '📋',
-        color: 'gray',
-        showDashboardLink: false
-      }
+  // First priority: Use status from the application if available
+  if (status.value) {
+    switch (status.value) {
+      case 'pending':
+        return {
+          title: 'Votre demande est en cours d\'examen',
+          description: 'Nous avons bien reçu votre demande d\'inscription en tant que journaliste. Notre équipe l\'examine actuellement. Ce processus peut prendre quelques jours.',
+          icon: '⏳',
+          color: 'yellow',
+          showDashboardLink: false
+        }
+      case 'approved':
+        return {
+          title: 'Félicitations ! Votre demande a été approuvée',
+          description: 'Votre inscription en tant que journaliste a été acceptée. Vous avez maintenant accès au tableau de bord journaliste et pouvez commencer à publier vos investigations.',
+          icon: '🎉',
+          color: 'green',
+          showDashboardLink: true
+        }
+      case 'rejected':
+        return {
+          title: 'Votre demande a été rejetée',
+          description: application.value?.admin_notes 
+            ? `Motif: ${application.value.admin_notes}`
+            : 'Nous regrettons de vous informer que votre demande d\'inscription en tant que journaliste n\'a pas pu être acceptée. Veuillez nous contacter pour plus d\'informations.',
+          icon: '❌',
+          color: 'red',
+          showDashboardLink: false
+        }
+      default:
+        break
+    }
+  }
+  
+  // Second priority: Check if user has journalist role with pending status (fallback from auth)
+  // This handles the case where profile fetch failed but auth store has the correct status
+  if (authStore.isJournalist && authStore.isPending) {
+    return {
+      title: 'Votre demande est en cours d\'examen',
+      description: 'Votre compte journaliste est en attente d\'approbation par l\'administrateur. Vous recevrez une notification dès que votre demande sera traitée.',
+      icon: '⏳',
+      color: 'yellow',
+      showDashboardLink: false
+    }
+  }
+  
+  // Default: No application found
+  return {
+    title: 'Aucune demande trouvée',
+    description: 'Vous n\'avez pas de demande d\'inscription en tant que journaliste.',
+    icon: '📋',
+    color: 'gray',
+    showDashboardLink: false
   }
 })
 
@@ -99,7 +119,7 @@ onMounted(async () => {
           <div 
             class="text-6xl mb-6"
             :class="{
-              'animate-pulse': status === 'pending'
+              'animate-pulse': status === 'pending' || (authStore.isJournalist && authStore.isPending)
             }"
           >
             {{ statusConfig.icon }}

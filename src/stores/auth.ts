@@ -102,7 +102,14 @@ export const useAuthStore = defineStore('auth', () => {
       }
     }
     
+    // If profile fetch failed with 500 errors consistently, log more details
     if (!data && lastError) {
+      const errorCode = String(lastError.code || '')
+      const errorMessage = String(lastError.message || '')
+      if (errorCode === 'PGRST301' || errorMessage.includes('500') || errorMessage.includes('internal server error')) {
+        console.error('[Auth] Profile fetch consistently failed with 500 errors after 3 attempts. Database may have RLS or connection issues.')
+      }
+      
       // If profile fetch keeps failing, try to get role from journalist_applications
       console.warn('[Auth] Profile fetch failed, checking journalist applications...')
       
