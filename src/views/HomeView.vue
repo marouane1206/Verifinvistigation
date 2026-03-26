@@ -63,6 +63,20 @@ const services = [
   },
 ]
 
+function handleServiceClick(service: { title: string; link: string }) {
+  // Special case: Réseau Journalistes card always navigates directly to registration
+  if (service.title === 'Réseau Journalistes') {
+    router.push('/journalistes/register')
+    return
+  }
+  
+  if (!authStore.isAuthenticated) {
+    router.push({ name: 'login', query: { redirect: service.link } })
+  } else {
+    router.push(service.link)
+  }
+}
+
 function handleCtaClick(link: string) {
   if (!authStore.isAuthenticated) {
     router.push({ name: 'login', query: { redirect: link } })
@@ -154,7 +168,7 @@ function handleCtaClick(link: string) {
             </p>
             <BaseButton
               variant="secondary"
-              @click="handleCtaClick(service.link)"
+              @click="handleServiceClick(service)"
             >
               {{ service.cta }}
             </BaseButton>
