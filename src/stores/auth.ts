@@ -94,7 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
       const errorCode = String(lastError.code || '')
       const errorMessage = String(lastError.message || '')
       if (errorCode === 'PGRST301' || errorMessage.includes('500') || errorMessage.includes('internal server error')) {
-        console.log(`[Auth] Profile fetch attempt ${attempt} failed with 500, retrying...`)
+        // Silent retry for temporary 500 errors
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
       } else {
         // For non-500 errors, don't retry
@@ -102,16 +102,20 @@ export const useAuthStore = defineStore('auth', () => {
       }
     }
     
-    // If profile fetch failed with 500 errors consistently, log more details
+    // If profile fetch failed with 500 errors consistently, use fallback
     if (!data && lastError) {
       const errorCode = String(lastError.code || '')
       const errorMessage = String(lastError.message || '')
-      if (errorCode === 'PGRST301' || errorMessage.includes('500') || errorMessage.includes('internal server error')) {
-        console.error('[Auth] Profile fetch consistently failed with 500 errors after 3 attempts. Database may have RLS or connection issues.')
+      const isServerError = errorCode === 'PGRST301' || errorMessage.includes('500') || errorMessage.includes('internal server error')
+      
+      if (isServerError) {
+        // Database temporarily unavailable - use fallback from auth metadata
+      } else {
+        console.warn('[Auth] Profile fetch error:', lastError.message)
       }
       
       // If profile fetch keeps failing, try to get role from journalist_applications
-      console.warn('[Auth] Profile fetch failed, checking journalist applications...')
+      console.debug('[Auth] Checking journalist applications as fallback...')
       
       let role: 'user' | 'journalist' | 'admin' = 'user'
       let status: 'active' | 'pending' | 'rejected' = 'active'
@@ -154,9 +158,7 @@ export const useAuthStore = defineStore('auth', () => {
       const email = authData?.user?.email || ''
       const username = authData?.user?.email?.split('@')[0] || 'user'
       
-      console.log('[Auth] Using fallback role:', role, 'status:', status)
-      
-      // Create a user object with the correct role
+      // Create a user object with the correct role based on auth metadata
       user.value = {
         id: userId,
         email: email,
