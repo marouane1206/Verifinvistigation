@@ -94,11 +94,10 @@ function handleCtaClick(link: string) {
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
         <div class="text-center">
           <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-            Verifinvestigation.org
+            Une plateforme intelligente pour signaler et vérifier l'information en temps réel.
           </h1>
           <p class="text-xl md:text-2xl text-nuit-200 mb-8 max-w-3xl mx-auto">
-            La plateforme de référence pour le signalement et la vérification d'informations. 
-            Ensemble, luttons contre la désinformation et les activités frauduleuses.
+            Prenez une longueur d'avance contre la fraude, la corruption et la désinformation.
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <BaseButton
