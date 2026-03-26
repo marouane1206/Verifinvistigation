@@ -455,9 +455,16 @@ CREATE POLICY "Les admins peuvent lire toutes les demandes"
     );
 
 -- Politique: Only the user can insert their own application
+-- NEW: Allow insertion if user exists in profiles (handles post-signUp, pre-email-confirmation)
 CREATE POLICY "Les utilisateurs peuvent créer leur propre demande"
     ON public.journalist_applications FOR INSERT
-    WITH CHECK (user_id = auth.uid());
+    WITH CHECK (
+        auth.uid() = user_id
+        OR EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = user_id
+        )
+    );
 
 -- Politique: Only admins can update (approve/reject)
 CREATE POLICY "Les admins peuvent mettre à jour les demandes"
