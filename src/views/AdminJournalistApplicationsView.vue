@@ -3,11 +3,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '../stores/admin'
 import { useApplicationsStore, type JournalistApplication } from '../stores/applications'
+import { useAuthStore } from '../stores/auth'
 import BaseButton from '../components/BaseButton.vue'
 
 const router = useRouter()
 const adminStore = useAdminStore()
 const applicationsStore = useApplicationsStore()
+const authStore = useAuthStore()
 
 // State
 const activeFilter = ref<'all' | 'pending' | 'approved' | 'rejected'>('all')
@@ -112,13 +114,25 @@ const closeRejectModal = () => {
 const approveApplication = async (applicationId: string) => {
   processingId.value = applicationId
   try {
+    console.log('[AdminJournalistApplications] Approving application:', applicationId)
+    
     const success = await applicationsStore.approveApplication(applicationId)
     if (success) {
-      // Send status notification email to applicant
+      console.log('[AdminJournalistApplications] Application approved, checking if affected current user...')
+      
+      // Check if the approved user is the currently logged-in user
       const app = applicationsStore.allApplications?.find(a => a.id === applicationId)
-      if (app) {
-        app.status = 'approved'
-        await applicationsStore.sendStatusNotification(app)
+      if (app?.user_id && app.user_id === authStore.user?.id) {
+        console.log('[AdminJournalistApplications] Approved user is current user, refreshing profile...')
+        await authStore.refreshUserProfile()
+        console.log('[AdminJournalistApplications] Profile refreshed, new role:', authStore.user?.role)
+      }
+      
+      // Send status notification email to applicant
+      const appForNotification = applicationsStore.allApplications?.find(a => a.id === applicationId)
+      if (appForNotification) {
+        appForNotification.status = 'approved'
+        await applicationsStore.sendStatusNotification(appForNotification)
       }
       await applicationsStore.getAllApplications()
       closeDetailModal()

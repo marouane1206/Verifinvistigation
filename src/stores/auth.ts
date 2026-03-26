@@ -312,6 +312,55 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Refresh the current user's profile from the database
+  // This is useful after role updates (e.g., after application approval)
+  async function refreshUserProfile(): Promise<boolean> {
+    if (!user.value) {
+      console.warn('[AUTH] Cannot refresh profile - no user logged in')
+      return false
+    }
+    
+    try {
+      console.log('[AUTH] Refreshing user profile for:', user.value.id)
+      
+      const { data, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.value.id)
+        .single()
+
+      if (fetchError) {
+        console.error('[AUTH] Error refreshing profile:', fetchError)
+        return false
+      }
+
+      if (data) {
+        console.log('[AUTH] Fresh profile data - role:', data.role, 'status:', data.status)
+        
+        // Ensure role has a valid value
+        const finalRole = data.role || 'user'
+        const finalStatus = data.status || 'active'
+        
+        user.value = {
+          id: data.id,
+          email: data.email || user.value.email,
+          username: data.username,
+          role: finalRole,
+          status: finalStatus,
+          created_at: data.created_at,
+        }
+        
+        console.log('[AUTH] User profile refreshed, new role:', finalRole)
+        return true
+      }
+      
+      return false
+    } catch (e) {
+      console.error('[AUTH] Unexpected error refreshing profile:', e)
+      return false
+    }
+  }
+
   async function login(email: string, password: string) {
     loading.value = true
     error.value = null
@@ -580,5 +629,6 @@ export const useAuthStore = defineStore('auth', () => {
     checkForcePasswordChange,
     updatePassword,
     clearForcePasswordChange,
+    refreshUserProfile,
   }
 })

@@ -293,6 +293,8 @@ export const useApplicationsStore = defineStore('applications', () => {
     error.value = null
 
     try {
+      console.log('[Applications] Approving application:', applicationId)
+      
       const { error: approveError } = await supabase.rpc('approve_journalist_application', {
         p_application_id: applicationId,
         p_admin_notes: adminNotes || null,
@@ -304,9 +306,49 @@ export const useApplicationsStore = defineStore('applications', () => {
         return false
       }
 
+      console.log('[Applications] Application approved successfully, fetching updated application...')
+
       // Refresh current application if it's the one being approved
       if (currentApplication.value?.id === applicationId) {
         await getMyApplication()
+      }
+
+      // Get the application to find the user_id
+      const app = allApplications.value?.find(a => a.id === applicationId)
+      if (app?.user_id) {
+        console.log('[Applications] Checking profile for user:', app.user_id)
+        
+        // Wait a moment for the DB to fully commit
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Verify the profile was updated correctly
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, status')
+          .eq('id', app.user_id)
+          .single()
+        
+        if (profileError) {
+          console.error('[Applications] Error fetching profile after approval:', profileError)
+        } else {
+          console.log('[Applications] Profile after approval:', profileData)
+          if (profileData?.role !== 'journalist') {
+            console.error('[Applications] BUG: Profile role is not journalist! Got:', profileData?.role)
+            
+            // Try to fix the role directly if it's wrong
+            console.log('[Applications] Attempting to fix role...')
+            const { error: fixError } = await supabase
+              .from('profiles')
+              .update({ role: 'journalist', status: 'active' })
+              .eq('id', app.user_id)
+            
+            if (fixError) {
+              console.error('[Applications] Failed to fix role:', fixError)
+            } else {
+              console.log('[Applications] Role fixed successfully!')
+            }
+          }
+        }
       }
 
       return true
