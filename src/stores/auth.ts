@@ -103,18 +103,59 @@ export const useAuthStore = defineStore('auth', () => {
     }
     
     if (!data && lastError) {
-      // If profile fetch keeps failing, use auth data as fallback
-      console.warn('[Auth] Profile fetch failed, using auth data as fallback')
+      // If profile fetch keeps failing, try to get role from journalist_applications
+      console.warn('[Auth] Profile fetch failed, checking journalist applications...')
+      
+      let role: 'user' | 'journalist' | 'admin' = 'user'
+      let status: 'active' | 'pending' | 'rejected' = 'active'
+      
+      // First, try to get role from user metadata (in case it's a new registration)
+      const metadataRole = authData?.user?.user_metadata?.role
+      const isJournalistMeta = authData?.user?.user_metadata?.is_journalist
+      
+      if (isJournalistMeta === 'true' || isJournalistMeta === true) {
+        role = 'journalist'
+        status = 'pending'
+      } else if (metadataRole === 'admin') {
+        role = 'admin'
+      } else if (metadataRole === 'journalist') {
+        role = 'journalist'
+      }
+      
+      // Try to check journalist applications table (may fail with 500)
+      try {
+        const { data: appData } = await supabase
+          .from('journalist_applications')
+          .select('status')
+          .eq('user_id', userId)
+          .in('status', ['pending', 'approved'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+        
+        if (appData) {
+          // User has a journalist application - override metadata role
+          role = 'journalist'
+          status = appData.status === 'approved' ? 'active' : 'pending'
+        }
+      } catch (appError) {
+        console.warn('[Auth] Could not fetch journalist applications:', appError)
+        // Keep using metadata role if available
+      }
+      
+      // Use auth data as fallback
       const email = authData?.user?.email || ''
       const username = authData?.user?.email?.split('@')[0] || 'user'
       
-      // Create a minimal user object from auth data
+      console.log('[Auth] Using fallback role:', role, 'status:', status)
+      
+      // Create a user object with the correct role
       user.value = {
         id: userId,
         email: email,
         username: username,
-        role: 'user',
-        status: 'active',
+        role: role,
+        status: status,
         created_at: new Date().toISOString(),
       }
       return
