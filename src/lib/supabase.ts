@@ -18,7 +18,9 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   },
   global: {
     headers: {
-      'x-client-info': 'verifinvestigation-web'
+      'x-client-info': 'verifinvestigation-web',
+      // Add Accept header to prevent 406 errors
+      'Accept': 'application/json'
     }
   }
 })
