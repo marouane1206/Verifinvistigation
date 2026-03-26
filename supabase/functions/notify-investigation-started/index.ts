@@ -3,7 +3,18 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { getSiteUrl, getSupportEmail } from '../shared/constants.ts'
+
+// Inlined constants to avoid shared module import issues in Dashboard deployment
+const DEFAULT_SITE_URL = 'https://verifinvestigation.org'
+const DEFAULT_SUPPORT_EMAIL = 'support@verifinvestigation.org'
+
+function getSiteUrl(): string {
+  return Deno.env.get('SITE_URL') || DEFAULT_SITE_URL
+}
+
+function getSupportEmail(): string {
+  return Deno.env.get('SUPPORT_EMAIL') || DEFAULT_SUPPORT_EMAIL
+}
 
 interface InvestigationData {
   report_id: string

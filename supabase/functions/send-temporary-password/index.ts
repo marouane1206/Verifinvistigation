@@ -2,7 +2,23 @@
 // This Edge Function sends temporary password emails to new users/journalists
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { getSiteUrl, getSupportEmail, getFromEmail } from '../shared/constants.ts'
+
+// Inlined constants to avoid shared module import issues in Dashboard deployment
+const DEFAULT_SITE_URL = 'https://verifinvestigation.org'
+const DEFAULT_SUPPORT_EMAIL = 'support@verifinvestigation.org'
+const DEFAULT_FROM_EMAIL = 'noreply@verifinvestigation.org'
+
+function getSiteUrl(): string {
+  return Deno.env.get('SITE_URL') || DEFAULT_SITE_URL
+}
+
+function getSupportEmail(): string {
+  return Deno.env.get('SUPPORT_EMAIL') || DEFAULT_SUPPORT_EMAIL
+}
+
+function getFromEmail(): string {
+  return Deno.env.get('FROM_EMAIL') || DEFAULT_FROM_EMAIL
+}
 
 interface RequestBody {
   email: string
