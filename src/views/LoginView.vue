@@ -135,6 +135,8 @@ async function handleResendConfirmation() {
     
     if (profileError) {
       console.error('[LoginView] Profile lookup error:', profileError)
+      // Don't show specific error to user for security - just handle gracefully
+      // Show generic message and allow resend attempt
     }
     
     if (!profileData) {
