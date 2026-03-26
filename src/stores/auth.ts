@@ -71,15 +71,40 @@ export const useAuthStore = defineStore('auth', () => {
     // Wait a moment for the trigger to complete (if this is a new user registration)
     await new Promise(resolve => setTimeout(resolve, 500))
     
-    const { data, error: fetchError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (fetchError) {
+    // Retry logic for fetching profile (handles temporary 500 errors)
+    let lastError: any = null
+    let data: any = null
+    
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const { data: profileData, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      
+      if (!fetchError) {
+        data = profileData
+        break
+      }
+      
+      lastError = fetchError
+      
+      // If it's a 500 error, wait before retrying
+      // Check using code which is more reliable
+      const errorCode = String(lastError.code || '')
+      const errorMessage = String(lastError.message || '')
+      if (errorCode === 'PGRST301' || errorMessage.includes('500') || errorMessage.includes('internal server error')) {
+        console.log(`[Auth] Profile fetch attempt ${attempt} failed with 500, retrying...`)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      } else {
+        // For non-500 errors, don't retry
+        break
+      }
+    }
+    
+    if (!data && lastError) {
       // Handle 406 error - profile might not exist, try to create it
-      if (fetchError.code === '406' || fetchError.code === 'PGRST116') {
+      if (lastError.code === '406' || lastError.code === 'PGRST116') {
         // Try to create the profile - check if this is a journalist registration
         const email = authData?.user?.email || ''
         const username = authData?.user?.email?.split('@')[0] || 'user'
