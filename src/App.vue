@@ -126,29 +126,10 @@ async function parseHashUrlTokens() {
         // Reinitialize auth store to get user profile
         await authStore.initialize()
         
-        // Check if email is already confirmed in the database
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('email_confirmed_at, status')
-          .eq('id', authStore.user?.id)
-          .single()
-        
-        // Check if email was already confirmed
-        if (profileData?.email_confirmed_at) {
-          console.log('[APP] Email already confirmed')
-          
-          // Store message for display
-          sessionStorage.setItem('confirmation_message', 'Votre compte est déjà actif. Veuillez vous connecter.')
-          
-          // Clear hash and redirect to login
-          window.location.hash = ''
-          setTimeout(() => {
-            window.location.hash = '/login'
-          }, 50)
-          return
-        }
-        
-        console.log('[APP] Email not previously confirmed, setting up session')
+        // Note: email confirmation is handled by Supabase auth - if we have a valid
+        // session from the URL hash, the email has already been confirmed.
+        // No need to check for email_confirmed_at in profiles table.
+        console.log('[APP] Session established from URL tokens')
         
         // Store session flag to track that we just established a session from URL
         sessionStorage.setItem('just_confirmed', 'true')
