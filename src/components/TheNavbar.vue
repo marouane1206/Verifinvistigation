@@ -62,7 +62,7 @@ const standardUserNavItems = computed<{ name: string; to?: string; dropdown?: Dr
   ]
 })
 
-// Journalist navigation configuration
+// Journalist navigation configuration - NEW STRUCTURE with Signalement and Vérification dropdowns
 const journalistNavItems = computed<{ name: string; to?: string; dropdown?: DropdownMenu }[]>(() => {
   if (!isJournalist.value) return []
   
@@ -72,20 +72,26 @@ const journalistNavItems = computed<{ name: string; to?: string; dropdown?: Drop
       to: '/journalistes/dashboard'
     },
     {
-      name: 'Signalements disponibles',
-      to: '/journaliste/available'
+      name: 'Signalement',
+      dropdown: {
+        name: 'Signalement',
+        items: [
+          { name: 'Disponible', to: '/journaliste/signalement/disponible' },
+          { name: 'En cours', to: '/journaliste/signalement/en-cours' },
+          { name: 'Clos', to: '/journaliste/signalement/clos' }
+        ]
+      }
     },
     {
-      name: 'Rapports en attente',
-      to: '/journaliste/pending'
-    },
-    {
-      name: 'Investigations en cours',
-      to: '/journaliste/verify'
-    },
-    {
-      name: 'Investigations terminées',
-      to: '/journaliste/completed'
+      name: 'Vérification',
+      dropdown: {
+        name: 'Vérification',
+        items: [
+          { name: 'Disponible', to: '/journaliste/verification/disponible' },
+          { name: 'En cours', to: '/journaliste/verification/en-cours' },
+          { name: 'Clos', to: '/journaliste/verification/clos' }
+        ]
+      }
     }
   ]
 })

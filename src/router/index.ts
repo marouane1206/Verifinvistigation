@@ -12,11 +12,15 @@ const ReportFormView = () => import('../views/ReportFormView.vue')
 const UserSignalementsView = () => import('../views/UserSignalementsView.vue')
 const UserVerificationsView = () => import('../views/UserVerificationsView.vue')
 const JournalistDashboardView = () => import('../views/JournalistDashboardView.vue')
-const JournalistPendingView = () => import('../views/JournalistPendingView.vue')
-const JournalistVerifyView = () => import('../views/JournalistVerifyView.vue')
-const JournalistCompletedView = () => import('../views/JournalistCompletedView.vue')
-const JournalistAvailableView = () => import('../views/JournalistAvailableView.vue')
 const InvestigationDetailsView = () => import('../views/InvestigationDetailsView.vue')
+
+// Individual wrapper views for backward compatibility and cleaner routes
+const JournalistSignalementDisponibleView = () => import('../views/JournalistSignalementDisponibleView.vue')
+const JournalistSignalementEnCoursView = () => import('../views/JournalistSignalementEnCoursView.vue')
+const JournalistSignalementClosView = () => import('../views/JournalistSignalementClosView.vue')
+const JournalistVerificationDisponibleView = () => import('../views/JournalistVerificationDisponibleView.vue')
+const JournalistVerificationEnCoursView = () => import('../views/JournalistVerificationEnCoursView.vue')
+const JournalistVerificationClosView = () => import('../views/JournalistVerificationClosView.vue')
 const SettingsView = () => import('../views/SettingsView.vue')
 
 // Admin views
@@ -113,40 +117,49 @@ const routes = [
     component: SettingsView,
     meta: { role: 'auth' as RouteRole },
   },
+  // Legacy routes - redirect to new structure
+  { path: '/journaliste/pending', redirect: '/journaliste/signalement/disponible' },
+  { path: '/journaliste/verify', redirect: '/journaliste/signalement/en-cours' },
+  { path: '/journaliste/completed', redirect: '/journaliste/signalement/clos' },
+  { path: '/journaliste/available', redirect: '/journaliste/signalement/disponible' },
+  { path: '/journaliste/verify/pending', redirect: '/journaliste/signalement/disponible' },
+  { path: '/journaliste/verify/verify', redirect: '/journaliste/signalement/en-cours' },
+  // NEW: Signalement status routes
   {
-    path: '/journaliste/pending',
-    name: 'journalist-pending',
-    component: JournalistPendingView,
+    path: '/journaliste/signalement/disponible',
+    name: 'journalist-signalement-disponible',
+    component: JournalistSignalementDisponibleView,
     meta: { role: 'journalist' as RouteRole },
   },
   {
-    path: '/journaliste/verify',
-    name: 'journalist-verify',
-    component: JournalistVerifyView,
+    path: '/journaliste/signalement/en-cours',
+    name: 'journalist-signalement-en-cours',
+    component: JournalistSignalementEnCoursView,
     meta: { role: 'journalist' as RouteRole },
   },
   {
-    path: '/journaliste/completed',
-    name: 'journalist-completed',
-    component: JournalistCompletedView,
+    path: '/journaliste/signalement/clos',
+    name: 'journalist-signalement-clos',
+    component: JournalistSignalementClosView,
+    meta: { role: 'journalist' as RouteRole },
+  },
+  // NEW: Vérification status routes
+  {
+    path: '/journaliste/verification/disponible',
+    name: 'journalist-verification-disponible',
+    component: JournalistVerificationDisponibleView,
     meta: { role: 'journalist' as RouteRole },
   },
   {
-    path: '/journaliste/available',
-    name: 'journalist-available',
-    component: JournalistAvailableView,
+    path: '/journaliste/verification/en-cours',
+    name: 'journalist-verification-en-cours',
+    component: JournalistVerificationEnCoursView,
     meta: { role: 'journalist' as RouteRole },
   },
   {
-    path: '/journaliste/verify/pending',
-    name: 'journalist-verify-pending',
-    component: JournalistPendingView,
-    meta: { role: 'journalist' as RouteRole },
-  },
-  {
-    path: '/journaliste/verify/verify',
-    name: 'journalist-verify-verify',
-    component: JournalistVerifyView,
+    path: '/journaliste/verification/clos',
+    name: 'journalist-verification-clos',
+    component: JournalistVerificationClosView,
     meta: { role: 'journalist' as RouteRole },
   },
   {

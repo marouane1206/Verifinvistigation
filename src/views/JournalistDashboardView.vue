@@ -35,6 +35,32 @@ const myCompletedReports = computed(() =>
   reportsStore.reports.filter(r => r.status === 'termine' && r.assigned_to === authStore.user?.id)
 )
 
+// Type-specific Signalement reports
+const availableSignalements = computed(() => 
+  availableReports.value.filter(r => r.type === 'signalement')
+)
+
+const inProgressSignalements = computed(() => 
+  myInProgressReports.value.filter(r => r.type === 'signalement')
+)
+
+const completedSignalements = computed(() => 
+  myCompletedReports.value.filter(r => r.type === 'signalement')
+)
+
+// Type-specific Vérification reports
+const availableVerifications = computed(() => 
+  availableReports.value.filter(r => r.type === 'verification')
+)
+
+const inProgressVerifications = computed(() => 
+  myInProgressReports.value.filter(r => r.type === 'verification')
+)
+
+const completedVerifications = computed(() => 
+  myCompletedReports.value.filter(r => r.type === 'verification')
+)
+
 // Filtered reports based on filter criteria
 const filteredAvailableReports = computed(() => {
   return availableReports.value.filter(report => {
@@ -185,6 +211,54 @@ onMounted(async () => {
               <div class="text-sm text-gray-600">Terminés</div>
             </div>
             <div class="text-4xl">✅</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Access Cards -->
+      <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Accès rapide</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Signalement Section -->
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-alerte-100 text-alerte-800 mr-2">Signalement</span>
+            </h3>
+            <div class="space-y-2">
+              <router-link to="/journaliste/signalement/disponible" class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 border border-gray-100 transition-colors">
+                <span class="text-sm text-gray-700">Disponibles</span>
+                <span class="text-sm font-medium text-nuit-600">{{ availableSignalements.length }}</span>
+              </router-link>
+              <router-link to="/journaliste/signalement/en-cours" class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 border border-gray-100 transition-colors">
+                <span class="text-sm text-gray-700">En cours</span>
+                <span class="text-sm font-medium text-bleu-500">{{ inProgressSignalements.length }}</span>
+              </router-link>
+              <router-link to="/journaliste/signalement/clos" class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 border border-gray-100 transition-colors">
+                <span class="text-sm text-gray-700">Clos</span>
+                <span class="text-sm font-medium text-vert-500">{{ completedSignalements.length }}</span>
+              </router-link>
+            </div>
+          </div>
+
+          <!-- Vérification Section -->
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-bleu-100 text-bleu-800 mr-2">Vérification</span>
+            </h3>
+            <div class="space-y-2">
+              <router-link to="/journaliste/verification/disponible" class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 border border-gray-100 transition-colors">
+                <span class="text-sm text-gray-700">Disponibles</span>
+                <span class="text-sm font-medium text-nuit-600">{{ availableVerifications.length }}</span>
+              </router-link>
+              <router-link to="/journaliste/verification/en-cours" class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 border border-gray-100 transition-colors">
+                <span class="text-sm text-gray-700">En cours</span>
+                <span class="text-sm font-medium text-bleu-500">{{ inProgressVerifications.length }}</span>
+              </router-link>
+              <router-link to="/journaliste/verification/clos" class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 border border-gray-100 transition-colors">
+                <span class="text-sm text-gray-700">Clos</span>
+                <span class="text-sm font-medium text-vert-500">{{ completedVerifications.length }}</span>
+              </router-link>
+            </div>
           </div>
         </div>
       </div>
